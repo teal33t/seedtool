@@ -394,6 +394,13 @@ gpg --verify signature.txt</code></pre>
               </select>
             </label>
           </p>
+          <p>
+            <label class="check-row">
+              <input type="checkbox" id="inputMnemonicIdMode" onchange="toggleMnemonicIdMode()">
+              Enter by ID — type each word's number from the BIP39 English word list instead of the word
+            </label>
+          </p>
+          <p class="recover-hint hidden" id="inputMnemonicIdHelp">IDs are the 1-based line numbers of the BIP39 English word list: ID 1 = abandon, ID 2 = ability, up to ID 2048 = zoo. The checksum works the same way for IDs as for words.</p>
           <section id="inputMnemonicWords" class="private-data">
             <div class="inputMnemonic-div"><label data-number="01" class="inputMnemonic-label"><input type="text" onkeyup="lastWordAutocomplete(this)" class="inputMnemonic-word" aria-label="Word 1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></label></div>
             <div class="inputMnemonic-div"><label data-number="02" class="inputMnemonic-label"><input type="text" onkeyup="lastWordAutocomplete(this)" class="inputMnemonic-word" aria-label="Word 2" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></label></div>

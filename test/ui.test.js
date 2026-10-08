@@ -1,8 +1,8 @@
 /*
  * Tests for the Seed Tool UI logic in dom.js: word boxes checked as they are
- * typed, the Load Seed errors, Taproot in the passphrase tester, searching a
- * list of passphrases, output descriptors in Derived Addresses, and Clear
- * seed wiping the new fields.
+ * typed, the Load Seed errors, word-number (ID) entry, Taproot in the
+ * passphrase tester, searching a list of passphrases, output descriptors in
+ * Derived Addresses, and Clear seed wiping the new fields.
  */
 
 const assert = require('assert');
@@ -13,6 +13,9 @@ const { loadTool } = require('./harness');
 
 const WWW = path.join(__dirname, '..', 'src', 'www');
 const ZERO_12 = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+const ZERO_12_IDS = '1 1 1 1 1 1 1 1 1 1 1 4';
+const EXAMPLE_12 = 'pipe clown rather craft ankle interest leopard message guide lake appear range';
+const EXAMPLE_12_IDS = '1323 353 1427 401 74 942 1027 1120 829 998 85 1423';
 const ZERO_24 = `${'abandon '.repeat(23)}art`;
 const BIP85_MASTER = 'xprv9s21ZrQH143K2LBWUUQRFXhucrQqBpKdRRxNVq2zBqsx8HVqFk2uYo8kmbaLLHRdqtQpUm98uKfu3vca1LqdGhUtyoFnCNkfmXRyPXLjbKb';
 
@@ -36,10 +39,19 @@ const fakeWordBoxes = (tool, words) => {
     input.attributes = {};
     input.setAttribute = (name, value) => { input.attributes[name] = value; };
     input.classList.names.delete('hidden');
-    return { querySelector: () => input, input };
+    return {
+      querySelector: () => input,
+      input,
+      classList: { toggle() {}, add() {}, remove() {}, contains: () => false },
+    };
   });
   tool.DOM.mnemonicInputs = boxes;
   return boxes.map((b) => b.input);
+};
+
+// Check or uncheck the Enter by ID box
+const setIdMode = (tool, on) => {
+  tool.document.getElementById('inputMnemonicIdMode').checked = on;
 };
 
 let failures = 0;
@@ -85,6 +97,90 @@ test('load seed: a bad word is marked and a bad checksum is explained', async ()
   assert.match(error.textContent, /fail the BIP39 checksum/);
   assert.doesNotMatch(error.textContent, /^Error:/);
   tool.cancelPendingTimers();
+});
+
+test('id boxes: word numbers load the same seed as the words they stand for', async () => {
+  const tool = await openTool();
+  setIdMode(tool, true);
+  tool.DOM.mnemonicLengthSelect.value = '12';
+  const load = tool.run('mnemonicInputSeedLoad');
+  const error = tool.document.getElementById('inputMnemonicError');
+  fakeWordBoxes(tool, ZERO_12_IDS.split(' '));
+  load();
+  assert.ok(error.classList.contains('hidden'), error.textContent);
+  assert.strictEqual(tool.DOM.bip39Phrase.value, ZERO_12);
+  tool.cancelPendingTimers();
+});
+
+test('id boxes: a bad word number is marked and a bad checksum is explained', async () => {
+  const tool = await openTool();
+  setIdMode(tool, true);
+  tool.DOM.mnemonicLengthSelect.value = '12';
+  const load = tool.run('mnemonicInputSeedLoad');
+  const error = tool.document.getElementById('inputMnemonicError');
+
+  const ids = ZERO_12_IDS.split(' ');
+  ids[4] = '2049';
+  const inputs = fakeWordBoxes(tool, ids);
+  load();
+  assert.match(error.textContent, /^2049 \(at position 5\) is not a valid word ID/);
+  assert.ok(inputs[4].classList.contains('word-invalid'));
+  assert.ok(!inputs[3].classList.contains('word-invalid'));
+
+  fakeWordBoxes(tool, `${'1 '.repeat(11)}1`.split(' '));
+  load();
+  assert.match(error.textContent, /fail the BIP39 checksum/);
+  tool.cancelPendingTimers();
+});
+
+test('id boxes: numbers are checked as IDs and the checkbox converts both ways', async () => {
+  const tool = await openTool();
+  setIdMode(tool, true);
+  const [input] = fakeWordBoxes(tool, ['4']);
+  const check = tool.run('checkMnemonicWordBox');
+  assert.strictEqual(check(input), true);
+  input.value = '2049';
+  assert.strictEqual(check(input), true, 'digits are fine while typing');
+  assert.strictEqual(check(input, true), false, 'but not once the box is left');
+  input.value = '2048';
+  assert.strictEqual(check(input, true), true, 'the last ID is valid');
+
+  tool.DOM.mnemonicLengthSelect.value = '12';
+  input.value = '2049';
+  check(input, true);
+  tool.run('showMnemonicWordHint')();
+  const hint = tool.document.getElementById('inputMnemonicHint');
+  assert.match(hint.textContent, /^Word 1: "2049" is not a valid word ID\. IDs run from 1 to 2048/);
+
+  const boxValues = () =>
+    tool.DOM.mnemonicInputs.map((div) => div.querySelector('input').value);
+  setIdMode(tool, false);
+  fakeWordBoxes(tool, ZERO_12.split(' '));
+  setIdMode(tool, true);
+  tool.run('toggleMnemonicIdMode')();
+  assert.deepStrictEqual(boxValues().slice(0, 12), ZERO_12_IDS.split(' '));
+  setIdMode(tool, false);
+  tool.run('toggleMnemonicIdMode')();
+  assert.deepStrictEqual(boxValues().slice(0, 12), ZERO_12.split(' '));
+});
+
+test('id boxes: a known example loads by its IDs and numbers suggest words', async () => {
+  const tool = await openTool();
+  setIdMode(tool, true);
+  tool.DOM.mnemonicLengthSelect.value = '12';
+  fakeWordBoxes(tool, EXAMPLE_12_IDS.split(' '));
+  const load = tool.run('mnemonicInputSeedLoad');
+  const error = tool.document.getElementById('inputMnemonicError');
+  load();
+  assert.ok(error.classList.contains('hidden'), error.textContent);
+  assert.strictEqual(tool.DOM.bip39Phrase.value, EXAMPLE_12);
+  tool.cancelPendingTimers();
+
+  // typing a number offers the words behind the matching IDs
+  const suggest = tool.run('wordIdsStartingWith');
+  assert.deepStrictEqual(Array.from(suggest('1')), [1, 10, 11, 12, 13]);
+  assert.deepStrictEqual(Array.from(suggest('1323')), [1323]);
+  assert.deepStrictEqual(Array.from(suggest('9999')), []);
 });
 
 test('passphrase tester: Taproot paths give Taproot addresses', async () => {

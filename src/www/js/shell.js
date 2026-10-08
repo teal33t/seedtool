@@ -3243,6 +3243,11 @@
         },
       });
       if (!found) return;
+      // Scanning always resolves to words, whatever the boxes were set to
+      if (DOM.inputMnemonicIdMode && DOM.inputMnemonicIdMode.checked) {
+        DOM.inputMnemonicIdMode.checked = false;
+        applyMnemonicIdMode();
+      }
       const words = found.mnemonic.split(' ');
       DOM.mnemonicLengthSelect.value = String(words.length);
       mnemonicInputLengthAdjust();

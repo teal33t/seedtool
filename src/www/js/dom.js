@@ -257,6 +257,7 @@ const setupDom = async () => {
   );
   DOM.singleSigInput = document.getElementById('singleSigInput');
   DOM.mnemonicInputs = document.querySelectorAll('.inputMnemonic-div');
+  DOM.inputMnemonicIdMode = document.getElementById('inputMnemonicIdMode');
   DOM.singleSigInput.oninput = singleSigCalc;
   // Event listener to clear autocomplete suggestions
   document.addEventListener('click', (e) => clearAutocompleteItems(e.target));
@@ -461,14 +462,36 @@ const thisBrowserIsShit = () => {
 };
 
 // Load seed from mnemonic input
+// In word-number ("ID") mode each box holds the word's 1-based line number in
+// the BIP39 English word list (1 = abandon, 2048 = zoo); otherwise a word.
+const mnemonicIdMode = () =>
+  !!(DOM.inputMnemonicIdMode && DOM.inputMnemonicIdMode.checked);
+
+// A word number: bare digits from 1 to the end of the word list
+const parseWordId = (text) => {
+  const trimmed = normalizeString(text);
+  if (!/^\d+$/.test(trimmed)) return 0;
+  const id = parseInt(trimmed, 10);
+  return id >= 1 && id <= wordList.length ? id : 0;
+};
+
+// The word number for a word, or 0 when it is not in the list
+const wordToId = (word) => {
+  const index = wordList.indexOf(normalizeString(word).toLowerCase());
+  return index < 0 ? 0 : index + 1;
+};
+
 // Mark a word box that cannot hold a BIP39 word. While typing, the start of
-// a real word is fine; once the box is left the word must be complete.
+// a real word is fine; once the box is left the word must be complete. In ID
+// mode the box must hold a whole word number instead.
 const checkMnemonicWordBox = (input, leaving = false) => {
   const word = normalizeString(input.value).toLowerCase();
   const ok =
     !word ||
-    wordList.includes(word) ||
-    (!leaving && wordList.some((w) => w.startsWith(word)));
+    (mnemonicIdMode()
+      ? !!parseWordId(word) || (!leaving && /^\d+$/.test(word))
+      : wordList.includes(word) ||
+        (!leaving && wordList.some((w) => w.startsWith(word))));
   input.classList.toggle('word-invalid', !ok);
   input.setAttribute('aria-invalid', ok ? 'false' : 'true');
   return ok;
@@ -488,7 +511,9 @@ const showMnemonicWordHint = () => {
     return;
   }
   const word = normalizeString(boxes[index].value).toLowerCase();
-  hint.textContent = `Word ${index + 1}: "${word}" is not in the BIP39 English word list. Did you mean "${findNearestWord(word)}"?`;
+  hint.textContent = mnemonicIdMode()
+    ? `Word ${index + 1}: "${word}" is not a valid word ID. IDs run from 1 to ${wordList.length} (1 = abandon, ${wordList.length} = zoo).`
+    : `Word ${index + 1}: "${word}" is not in the BIP39 English word list. Did you mean "${findNearestWord(word)}"?`;
   hint.classList.remove('hidden');
 };
 
@@ -511,6 +536,23 @@ const mnemonicInputSeedLoad = () => {
       if (i < len) {
         const input = div.querySelector('input');
         const word = normalizeString(input.value).toLowerCase();
+        if (mnemonicIdMode()) {
+          const id = parseWordId(word);
+          if (!id) {
+            input.classList.add('word-invalid');
+            input.setAttribute('aria-invalid', 'true');
+            input.focus();
+            throw new Error(
+              word
+                ? `${word} (at position ${
+                    i + 1
+                  }) is not a valid word ID, please check it and try again. IDs run from 1 to ${wordList.length} (1 = abandon).`
+                : `Missing word ID (at position ${i + 1})`
+            );
+          }
+          mnemonicArray.push(wordList[id - 1]);
+          return;
+        }
         if (!wordList.includes(word)) {
           input.classList.add('word-invalid');
           input.setAttribute('aria-invalid', 'true');
@@ -555,6 +597,47 @@ const mnemonicInputLengthAdjust = () => {
   DOM.mnemonicInputs.forEach((div, i) => {
     div.classList.toggle('hidden', i >= len);
   });
+};
+
+// Point the Enter words boxes at words or word numbers
+const applyMnemonicIdMode = () => {
+  const on = mnemonicIdMode();
+  DOM.mnemonicInputs.forEach((div, i) => {
+    div.querySelector('input').setAttribute(
+      'aria-label',
+      on ? `Word ${i + 1} ID` : `Word ${i + 1}`
+    );
+    div
+      .querySelector('input')
+      .setAttribute('inputmode', on ? 'numeric' : 'text');
+  });
+  const help = document.getElementById('inputMnemonicIdHelp');
+  if (help) help.classList.toggle('hidden', !on);
+  clearAutocompleteItems();
+};
+
+// Flip the Enter words boxes between words and word numbers. A box holding a
+// value in the old form is converted to the other form; anything else is left
+// for the user to fix.
+const toggleMnemonicIdMode = () => {
+  const on = mnemonicIdMode();
+  DOM.mnemonicInputs.forEach((div) => {
+    const input = div.querySelector('input');
+    const word = normalizeString(input.value).toLowerCase();
+    if (word) {
+      if (on) {
+        const id = wordToId(word);
+        if (id) input.value = String(id);
+      } else {
+        const id = parseWordId(word);
+        if (id) input.value = wordList[id - 1];
+      }
+    }
+    checkMnemonicWordBox(input, true);
+  });
+  applyMnemonicIdMode();
+  showMnemonicWordHint();
+  adjustPanelHeight();
 };
 
 // Show/Hide all private data
@@ -942,6 +1025,14 @@ const clearAutocompleteItems = (el) => {
   });
 };
 const lastWordAutocomplete = (input) => {
+  // Word numbers suggest the words behind them instead of the word list
+  if (
+    mnemonicIdMode() &&
+    input.classList.contains('inputMnemonic-word')
+  ) {
+    idAutocomplete(input);
+    return;
+  }
   const searchText = input.value.toLowerCase();
   if (searchText === currentAuto.term && currentAuto.input === input) return;
   if (currentAuto.input !== input) currentAuto.focus = -1;
@@ -975,6 +1066,52 @@ const lastWordAutocomplete = (input) => {
     resultDiv.dataset.word = word;
     resultDiv.addEventListener('click', function () {
       currentAuto.input.value = this.dataset.word;
+      clearAutocompleteItems();
+      focusOnNextWord();
+    });
+    resultsContainer.appendChild(resultDiv);
+  });
+  if (searchResults.length === 1) {
+    currentAuto.focus = 0;
+    addAutocompleteActive();
+  }
+};
+
+// Word numbers whose digits start with what was typed: "1" offers 1, 10, 11...
+const wordIdsStartingWith = (digits) => {
+  const matches = [];
+  for (let id = 1; id <= wordList.length && matches.length < 5; id++) {
+    if (String(id).startsWith(digits)) matches.push(id);
+  }
+  return matches;
+};
+
+// Suggest the word behind each word number typed: "1" shows "1 = abandon".
+// The list stays for a complete number too, so the word can be checked
+// against a written backup before moving on.
+const idAutocomplete = (input) => {
+  const searchText = normalizeString(input.value);
+  if (searchText === currentAuto.term && currentAuto.input === input) return;
+  if (currentAuto.input !== input) currentAuto.focus = -1;
+  currentAuto.input = input;
+  currentAuto.term = searchText;
+  clearAutocompleteItems();
+  if (!/^\d+$/.test(searchText)) return;
+  const searchResults = wordIdsStartingWith(searchText);
+  if (!searchResults.length) return;
+  const resultsContainer = document.createElement('DIV');
+  resultsContainer.setAttribute('class', 'autocomplete-items');
+  document.body.appendChild(resultsContainer);
+  autocompletePositionUpdate();
+  searchResults.forEach((id) => {
+    const resultDiv = document.createElement('DIV');
+    resultDiv.innerHTML = `${id} = ${wordList[id - 1]}`.replace(
+      searchText,
+      `<strong>${searchText}</strong>`
+    );
+    resultDiv.dataset.id = String(id);
+    resultDiv.addEventListener('click', function () {
+      currentAuto.input.value = this.dataset.id;
       clearAutocompleteItems();
       focusOnNextWord();
     });
@@ -1063,7 +1200,7 @@ const removeAutocompleteActive = () => {
 };
 
 const focusOnNextWord = () => {
-  const inputs = document.querySelectorAll('.' + currentAuto.input.className);
+  const inputs = document.querySelectorAll('.' + currentAuto.input.classList[0]);
   const numWords = parseInt(
     currentAuto.input.className.startsWith('lastWord')
       ? DOM.lastWordLength.value
@@ -3278,6 +3415,13 @@ const pasteMnemonic = (event) => {
 
   if (![12, 15, 18, 21, 24].includes(words.length)) {
     return;
+  }
+
+  // A paste of word numbers switches the boxes to ID mode, words switch back
+  const byId = words.every((w) => /^\d+$/.test(w));
+  if (DOM.inputMnemonicIdMode && !!DOM.inputMnemonicIdMode.checked !== byId) {
+    DOM.inputMnemonicIdMode.checked = byId;
+    applyMnemonicIdMode();
   }
 
   DOM.mnemonicLengthSelect.value = words.length;
