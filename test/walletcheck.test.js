@@ -64,15 +64,49 @@ test('wallet checker: addresses are classified and checksummed', async () => {
   assert.match(classify('').error, /empty/);
 });
 
-test('wallet checker: pasted text is split into unique address tokens', async () => {
+test('wallet checker: addresses are extracted from messy pasted text', async () => {
   const tool = await openTool();
-  const parse = tool.run('parseAddressList');
-  assert.deepStrictEqual(Array.from(parse(`${ADDR_LEGACY}, ${ADDR_ETH};${ADDR_SCRIPT}\nxyz`)), [
-    ADDR_LEGACY, ADDR_ETH, ADDR_SCRIPT, 'xyz',
-  ]);
-  assert.deepStrictEqual(Array.from(parse(`${ADDR_ETH} ${ADDR_ETH} ${ADDR_ETH}`)), [ADDR_ETH]);
-  assert.deepStrictEqual(Array.from(parse('  \n , ; ')), []);
-  assert.deepStrictEqual(Array.from(parse('')), []);
+  const extract = tool.run('extractWalletAddresses');
+  // A real export sample: addresses mixed with amounts, notes and separators
+  const messy = [
+    'bc1q7h9egjhxcy4zv3hvlfc0j0g9a7v7ufwvjl6385 | 0.00784083   ',
+    '',
+    'bc1q3wmekjyxunfc4xe47dkl45ckqugw2nqxv2p75f | 0.00232158',
+    'bc1qktds0kvm0a6whay9qz48wvrpv68m3tg09d3qtw | 0.00012772',
+    'bc1qc6knfqrwynldkay0y9s5ldq7jadkvd9fkhsd86 | 0.00804999 high   -----',
+    '',
+    'bc1qxdajpq4l4h5yjsl6aj280hhnudymgedq8yhsrw | 0.01918753',
+    'bc1p5akucnl7tasjp7cw0qej6q389hsed54uwham9ucepr4x3lygyz9q0kuvla | 0.00384450',
+    'bc1qjqcq6x9e0axx8u36gf6n2nntwhkv8ee024989e | 0.00313381  ok',
+  ].join('\n');
+  assert.deepStrictEqual(
+    Array.from(extract(messy)),
+    [
+      'bc1q7h9egjhxcy4zv3hvlfc0j0g9a7v7ufwvjl6385',
+      'bc1q3wmekjyxunfc4xe47dkl45ckqugw2nqxv2p75f',
+      'bc1qktds0kvm0a6whay9qz48wvrpv68m3tg09d3qtw',
+      'bc1qc6knfqrwynldkay0y9s5ldq7jadkvd9fkhsd86',
+      'bc1qxdajpq4l4h5yjsl6aj280hhnudymgedq8yhsrw',
+      'bc1p5akucnl7tasjp7cw0qej6q389hsed54uwham9ucepr4x3lygyz9q0kuvla',
+      'bc1qjqcq6x9e0axx8u36gf6n2nntwhkv8ee024989e',
+    ]
+  );
+  // separators and simple lists still work
+  assert.deepStrictEqual(
+    Array.from(extract(`${ADDR_LEGACY}, ${ADDR_ETH};${ADDR_SCRIPT}\nxyz`)),
+    [ADDR_LEGACY, ADDR_ETH, ADDR_SCRIPT]
+  );
+  // repeats de-dupe case-insensitively
+  assert.deepStrictEqual(
+    Array.from(extract(`${ADDR_SEGWIT} ${ADDR_SEGWIT.toUpperCase()} ${ADDR_ETH} ${ADDR_ETH}`)),
+    [ADDR_SEGWIT, ADDR_ETH]
+  );
+  // a 32-byte hex txid is not an Ethereum address
+  assert.deepStrictEqual(Array.from(extract(`0x${'ab'.repeat(32)} | note`)), []);
+  // amounts, notes and empty text extract nothing
+  assert.deepStrictEqual(Array.from(extract('0.00784083 high ----- ok')), []);
+  assert.deepStrictEqual(Array.from(extract('  \n , ; ')), []);
+  assert.deepStrictEqual(Array.from(extract('')), []);
 });
 
 test('wallet checker: balances are formatted exactly', async () => {
@@ -210,17 +244,18 @@ test('wallet checker: a mixed batch renders rows, isolates failures and totals u
     return down();
   };
   tool.document.getElementById('walletCheckInput').value = [
-    ADDR_LEGACY,
+    `${ADDR_LEGACY} | 0.00784083`,
     `${ADDR_ETH}, ${ADDR_SCRIPT}`,
     ADDR_LEGACY, // duplicate on purpose - must not double-count
-    'not-an-address',
+    'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5', // corrupted checksum
+    '0.00804999 high   -----', // junk line - ignored
   ].join('\n');
   const rows = Array.from(await tool.run('walletCheckRun')());
   assert.strictEqual(rows.length, 4);
   assert.strictEqual(rows[0].confirmedSats, 100000);
   assert.strictEqual(rows[1].wei, BigInt('1000000000000000000'));
   assert.match(rows[2].error, /lookup failed/);
-  assert.match(rows[3].error, /not a valid/);
+  assert.match(rows[3].error, /checksum/);
   const html = tool.document.getElementById('walletCheckResults').innerHTML;
   assert.match(html, /wallet-table/);
   assert.match(html, /0\.001 BTC ≈ \$30\.00/);
@@ -259,10 +294,14 @@ test('wallet checker: batch cap, empty input, and Clear / Clear seed', async () 
   const input = tool.document.getElementById('walletCheckInput');
   const errorEl = tool.document.getElementById('walletCheckError');
 
-  input.value = Array.from({ length: 26 }, (_, i) => `garbage${i}`).join(' ');
+  input.value = Array.from({ length: 101 }, (_, i) => `0x${i.toString(16).padStart(40, '0')}`).join(' ');
   assert.strictEqual((await tool.run('walletCheckRun')()).length, 0);
-  assert.match(errorEl.textContent, /limit is 25/);
+  assert.match(errorEl.textContent, /limit is 100/);
   assert.strictEqual(fetches, 0);
+
+  input.value = 'high   ----- 0.0078 ok';
+  assert.strictEqual((await tool.run('walletCheckRun')()).length, 0);
+  assert.match(errorEl.textContent, /No Bitcoin or Ethereum addresses/);
 
   input.value = ' ';
   assert.strictEqual((await tool.run('walletCheckRun')()).length, 0);

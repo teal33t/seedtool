@@ -1216,7 +1216,7 @@ const focusOnNextWord = () => {
 // Wallet Checker (Explore Blockchain): on-chain balances for pasted Bitcoin /
 // Ethereum addresses. Deliberately online - every lookup sends the address to
 // a third-party API, which the UI warns about in two places.
-const WALLET_CHECK_MAX = 25;
+const WALLET_CHECK_MAX = 100;
 const WALLET_CHECK_BTC_APIS = [
   'https://blockstream.info/api/address/',
   'https://mempool.space/api/address/',
@@ -1290,15 +1290,29 @@ const classifyWalletAddress = (raw) => {
   return { error: 'not a valid Bitcoin or Ethereum address' };
 };
 
-// Split pasted text into address tokens (any whitespace, commas or
-// semicolons), de-duplicating exact repeats so totals can't double-count.
-const parseAddressList = (text) => {
+// Pull address candidates out of arbitrary pasted text (export lines like
+// "bc1q… | 0.0078", notes, separators), in document order, de-duplicating
+// case-insensitively so totals can't double-count. Anything that doesn't
+// look like an address is simply not extracted. The bech32 class is derived
+// from BECH32_CHARSET so it can't drift from the checksum verifier.
+const WALLET_ADDR_RES = [
+  new RegExp(`(?:bc1|tb1|bcrt1)[${BECH32_CHARSET}]{6,87}`, 'gi'),
+  /0x[a-fA-F0-9]{40}(?![0-9a-fA-F])/g,
+  /\b[13][a-km-zA-HJ-NP-Z1-9]{25,34}\b/g,
+];
+const extractWalletAddresses = (text) => {
+  const s = String(text || '');
+  const found = [];
+  for (const re of WALLET_ADDR_RES) {
+    for (const m of s.matchAll(re)) found.push({ index: m.index, token: m[0] });
+  }
+  found.sort((a, b) => a.index - b.index);
   const seen = new Set();
   const out = [];
-  for (const t of String(text || '').split(/[\s,;]+/)) {
-    const token = t.trim();
-    if (!token || seen.has(token)) continue;
-    seen.add(token);
+  for (const { token } of found) {
+    const key = token.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     out.push(token);
   }
   return out;
@@ -1475,9 +1489,15 @@ const walletCheckRun = async () => {
   const errorEl = document.getElementById('walletCheckError');
   errorEl.textContent = '';
   errorEl.classList.add('hidden');
-  const tokens = parseAddressList(document.getElementById('walletCheckInput').value);
-  if (!tokens.length) {
+  const inputText = document.getElementById('walletCheckInput').value;
+  const tokens = extractWalletAddresses(inputText);
+  if (!String(inputText).trim()) {
     errorEl.textContent = 'Paste at least one Bitcoin or Ethereum address to check.';
+    errorEl.classList.remove('hidden');
+    return [];
+  }
+  if (!tokens.length) {
+    errorEl.textContent = 'No Bitcoin or Ethereum addresses were found in that text.';
     errorEl.classList.remove('hidden');
     return [];
   }
