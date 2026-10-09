@@ -17,15 +17,16 @@ console.log('Building HTML file...');
     // Content Security Policy for the built page. Scripts and styles are
     // all inline, so inline is allowed. Nothing else may load, and the only
     // requests allowed are the opt-in online features: PayNym avatars
-    // (images), BIP-353 DNS-over-HTTPS lookups, and the Wallet Checker's
-    // balance APIs (two per chain, each with a fallback). dev.html has no
+    // (images), BIP-353 DNS-over-HTTPS lookups, the Wallet Checker's
+    // balance APIs (two per chain, each with a fallback), and its USD rate
+    // APIs (CoinGecko with a Coinbase fallback). dev.html has no
     // policy, so the dev server's hot reload keeps working.
     const csp = [
       "default-src 'none'",
       "script-src 'unsafe-inline'",
       "style-src 'unsafe-inline'",
       'img-src data: blob: https://paynym.rs',
-      'connect-src https://cloudflare-dns.com https://dns.google https://blockstream.info https://mempool.space https://cloudflare-eth.com https://ethereum.publicnode.com',
+      'connect-src https://cloudflare-dns.com https://dns.google https://blockstream.info https://mempool.space https://cloudflare-eth.com https://ethereum.publicnode.com https://api.coingecko.com https://api.coinbase.com',
       "base-uri 'none'",
       "form-action 'none'",
       "object-src 'none'",

@@ -1323,6 +1323,16 @@ const weiToEthString = (wei) => {
   return (neg ? '-' : '') + whole + (frac ? '.' + frac : '');
 };
 
+// USD display: two decimals with thousands separators; dust shows as <$0.01
+const formatUsd = (amount) => {
+  const neg = amount < 0 ? '-' : '';
+  const abs = Math.abs(amount);
+  const fixed = abs.toFixed(2);
+  if (fixed === '0.00' && abs > 0) return `${neg}<$0.01`;
+  const [whole, frac] = fixed.split('.');
+  return `${neg}$${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${frac}`;
+};
+
 const walletCheckFetchJson = async (doFetch, url, opts) => {
   const resp = await doFetch(url, opts);
   if (!resp || !resp.ok) throw new Error('HTTP ' + (resp ? resp.status : 'no response'));
@@ -1373,7 +1383,49 @@ const fetchEthBalance = async (address, doFetch) => {
   throw lastError || new Error('lookup failed');
 };
 
-const walletCheckRender = (rows) => {
+// USD conversion rates. Rate requests carry no addresses - only the page's
+// own IP - and a rate failure must never fail a balance check (render just
+// skips the USD figures when rates are unavailable).
+const WALLET_CHECK_RATE_API =
+  'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd';
+const WALLET_CHECK_RATE_FALLBACK = [
+  'https://api.coinbase.com/v2/prices/BTC-USD/spot',
+  'https://api.coinbase.com/v2/prices/ETH-USD/spot',
+];
+const WALLET_CHECK_RATE_TTL = 60000;
+let walletUsdRatesCache = null;
+
+const fetchUsdRates = async (doFetch) => {
+  try {
+    const data = await walletCheckFetchJson(doFetch, WALLET_CHECK_RATE_API);
+    const btcUsd = data && data.bitcoin && data.bitcoin.usd;
+    const ethUsd = data && data.ethereum && data.ethereum.usd;
+    if (typeof btcUsd === 'number' && typeof ethUsd === 'number') return { btcUsd, ethUsd };
+  } catch (e) {
+    // fall through to the fallback below
+  }
+  try {
+    const [btc, eth] = await Promise.all(
+      WALLET_CHECK_RATE_FALLBACK.map((url) => walletCheckFetchJson(doFetch, url))
+    );
+    const btcUsd = parseFloat(btc && btc.data && btc.data.amount);
+    const ethUsd = parseFloat(eth && eth.data && eth.data.amount);
+    if (Number.isFinite(btcUsd) && Number.isFinite(ethUsd)) return { btcUsd, ethUsd };
+  } catch (e) {
+    // rates are optional
+  }
+  return null;
+};
+
+const getUsdRates = async (doFetch) => {
+  if (walletUsdRatesCache && Date.now() - walletUsdRatesCache.at < WALLET_CHECK_RATE_TTL)
+    return walletUsdRatesCache.rates;
+  const rates = await fetchUsdRates(doFetch);
+  if (rates) walletUsdRatesCache = { at: Date.now(), rates };
+  return rates;
+};
+
+const walletCheckRender = (rows, rates) => {
   const el = document.getElementById('walletCheckResults');
   if (!rows.length) {
     el.innerHTML = '';
@@ -1393,25 +1445,30 @@ const walletCheckRender = (rows) => {
       if (row.network === 'BTC') {
         btcCount += 1;
         totalSats += row.confirmedSats;
+        const usdNote = rates ? ` ≈ ${formatUsd((row.confirmedSats / 1e8) * rates.btcUsd)}` : '';
         const satsNote = `<span class="wallet-sub">${row.confirmedSats} sats</span>`;
         const pending = row.pendingSats
-          ? `<span class="wallet-sub">${row.pendingSats > 0 ? '+' : ''}${satsToBtcString(row.pendingSats)} BTC unconfirmed</span>`
+          ? `<span class="wallet-sub">${row.pendingSats > 0 ? '+' : ''}${satsToBtcString(row.pendingSats)} BTC${rates ? ` ≈ ${formatUsd((row.pendingSats / 1e8) * rates.btcUsd)}` : ''} unconfirmed</span>`
           : '';
-        return `<tr><td class="wallet-addr">${addr}</td><td>Bitcoin</td><td>${satsToBtcString(row.confirmedSats)} BTC${satsNote}${pending}</td><td>checked</td></tr>`;
+        return `<tr><td class="wallet-addr">${addr}</td><td>Bitcoin</td><td>${satsToBtcString(row.confirmedSats)} BTC${usdNote}${satsNote}${pending}</td><td>checked</td></tr>`;
       }
       ethCount += 1;
       totalWei += BigInt(row.wei);
-      return `<tr><td class="wallet-addr">${addr}</td><td>Ethereum</td><td>${weiToEthString(row.wei)} ETH<span class="wallet-sub">${row.wei.toString()} wei</span></td><td>checked</td></tr>`;
+      const usdNote = rates ? ` ≈ ${formatUsd((Number(row.wei) / 1e18) * rates.ethUsd)}` : '';
+      return `<tr><td class="wallet-addr">${addr}</td><td>Ethereum</td><td>${weiToEthString(row.wei)} ETH${usdNote}<span class="wallet-sub">${row.wei.toString()} wei</span></td><td>checked</td></tr>`;
     })
     .join('');
   const totals = [];
   if (btcCount)
-    totals.push(`${satsToBtcString(totalSats)} BTC across ${btcCount} address${btcCount === 1 ? '' : 'es'}`);
+    totals.push(`${satsToBtcString(totalSats)} BTC${rates ? ` ≈ ${formatUsd((totalSats / 1e8) * rates.btcUsd)}` : ''} across ${btcCount} address${btcCount === 1 ? '' : 'es'}`);
   if (ethCount)
-    totals.push(`${weiToEthString(totalWei)} ETH across ${ethCount} address${ethCount === 1 ? '' : 'es'}`);
+    totals.push(`${weiToEthString(totalWei)} ETH${rates ? ` ≈ ${formatUsd((Number(totalWei) / 1e18) * rates.ethUsd)}` : ''} across ${ethCount} address${ethCount === 1 ? '' : 'es'}`);
+  const grand = rates
+    ? ` · ≈ ${formatUsd((totalSats / 1e8) * rates.btcUsd + (Number(totalWei) / 1e18) * rates.ethUsd)} total`
+    : '';
   el.innerHTML =
     `<table class="labels-table wallet-table"><thead><tr><th>Address</th><th>Network</th><th>Balance</th><th>Status</th></tr></thead><tbody>${trs}</tbody></table>` +
-    (totals.length ? `<p class="wallet-totals"><strong>Totals:</strong> ${totals.join(' · ')}</p>` : '');
+    (totals.length ? `<p class="wallet-totals"><strong>Totals:</strong> ${totals.join(' · ')}${grand}</p>` : '');
 };
 
 const walletCheckRun = async () => {
@@ -1437,21 +1494,24 @@ const walletCheckRun = async () => {
   const checked = rows.filter((r) => !r.error);
   const btn = document.getElementById('walletCheckBtn');
   btn.disabled = true;
-  await Promise.all(
-    checked.map(async (row) => {
-      try {
-        const bal =
-          row.network === 'BTC'
-            ? await fetchBtcBalance(row.address, fetch)
-            : await fetchEthBalance(row.address, fetch);
-        Object.assign(row, bal);
-      } catch (e) {
-        row.error = 'lookup failed: ' + (e && e.message ? e.message : e);
-      }
-    })
-  );
+  const [rates] = await Promise.all([
+    getUsdRates(fetch),
+    Promise.all(
+      checked.map(async (row) => {
+        try {
+          const bal =
+            row.network === 'BTC'
+              ? await fetchBtcBalance(row.address, fetch)
+              : await fetchEthBalance(row.address, fetch);
+          Object.assign(row, bal);
+        } catch (e) {
+          row.error = 'lookup failed: ' + (e && e.message ? e.message : e);
+        }
+      })
+    ),
+  ]);
   btn.disabled = false;
-  walletCheckRender(rows);
+  walletCheckRender(rows, rates);
   return rows;
 };
 

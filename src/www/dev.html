@@ -2613,13 +2613,14 @@ gpg --verify signature.txt</code></pre>
         <div class="explainer__body">
           <p><strong>Bitcoin</strong> addresses (<code>1…</code> legacy, <code>3…</code> script, <code>bc1q…</code> segwit, <code>bc1p…</code> taproot) are checked against an Esplora block explorer - Blockstream first, mempool.space as fallback. The balance shown is the confirmed total, with any unconfirmed change listed separately.</p>
           <p><strong>Ethereum</strong> addresses (<code>0x…</code>) are checked with <code>eth_getBalance</code> against a public JSON-RPC node - Cloudflare first, PublicNode as fallback.</p>
+          <p><strong>USD</strong> figures are live conversions from CoinGecko (Coinbase as fallback), cached for one minute. The rate requests carry no addresses - but like the balance lookups they do reveal your IP to the provider.</p>
           <p class="recover-hint">Looking up an address tells the API operator - and anyone watching your connection - that you're interested in that address. Grouping several addresses in one batch links them at the API too. For sensitive lookups use Tor Browser. Results live only in this page - nothing is stored or sent anywhere else.</p>
         </div>
         <button type="button" class="explainer__dismiss" data-dismiss-explainer="walletcheck" title="Dismiss" aria-label="Dismiss">&times;</button>
       </div>
 
       <div class="panel">
-        <div class="warning"><strong>This tool goes online.</strong> Each address you check is sent to third-party APIs (Blockstream / mempool.space for Bitcoin, Cloudflare / PublicNode for Ethereum) along with your IP address. Only ever paste addresses here - never seed words or private keys.</div>
+        <div class="warning"><strong>This tool goes online.</strong> Each address you check is sent to third-party APIs (Blockstream / mempool.space for Bitcoin, Cloudflare / PublicNode for Ethereum) along with your IP address. USD rates come from CoinGecko (fallback Coinbase) - those requests carry no addresses. Only ever paste addresses here - never seed words or private keys.</div>
         <label for="walletCheckInput">Bitcoin or Ethereum addresses</label>
         <div class="copy-wrapper">
           <textarea id="walletCheckInput" class="textarea-input" rows="5" placeholder="bc1q… or 0x…&#10;One per line - commas and spaces work too" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>

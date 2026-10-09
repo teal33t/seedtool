@@ -92,6 +92,41 @@ test('wallet checker: balances are formatted exactly', async () => {
   assert.strictEqual(eth(BigInt('123456789012345678901234567890')), '123456789012.34567890123456789');
 });
 
+test('wallet checker: USD amounts format cleanly and rates fetch with fallback', async () => {
+  const tool = await openTool();
+  const formatUsd = tool.run('formatUsd');
+  assert.strictEqual(formatUsd(0), '$0.00');
+  assert.strictEqual(formatUsd(0.001), '<$0.01');
+  assert.strictEqual(formatUsd(1234.5), '$1,234.50');
+  assert.strictEqual(formatUsd(1234567.891), '$1,234,567.89');
+  assert.strictEqual(formatUsd(-5), '-$5.00');
+
+  const fetchUsdRates = tool.run('fetchUsdRates');
+  // CoinGecko answers directly
+  let calls = [];
+  let rates = await fetchUsdRates(async (url) => {
+    calls.push(url);
+    return okJson({ bitcoin: { usd: 30000 }, ethereum: { usd: 2000 } });
+  });
+  assert.strictEqual(rates.btcUsd, 30000);
+  assert.strictEqual(rates.ethUsd, 2000);
+  assert.match(calls[0], /coingecko/);
+
+  // unusable primary -> Coinbase spot prices
+  calls = [];
+  rates = await fetchUsdRates(async (url) => {
+    calls.push(url);
+    if (url.includes('coingecko')) return okJson({});
+    return okJson(url.includes('BTC-USD') ? { data: { amount: '31000.25' } } : { data: { amount: '2100.75' } });
+  });
+  assert.strictEqual(rates.btcUsd, 31000.25);
+  assert.strictEqual(rates.ethUsd, 2100.75);
+  assert.strictEqual(calls.filter((u) => u.includes('coinbase')).length, 2);
+
+  // both down -> null; rates are optional
+  assert.strictEqual(await fetchUsdRates(down), null);
+});
+
 test('wallet checker: Bitcoin lookups use Blockstream and fall back to mempool.space', async () => {
   const tool = await openTool();
   const fetchBtcBalance = tool.run('fetchBtcBalance');
@@ -170,6 +205,8 @@ test('wallet checker: a mixed batch renders rows, isolates failures and totals u
       });
     if (url.includes('cloudflare-eth'))
       return okJson({ jsonrpc: '2.0', id: 1, result: '0xde0b6b3a7640000' });
+    if (url.includes('coingecko'))
+      return okJson({ bitcoin: { usd: 30000 }, ethereum: { usd: 2000 } });
     return down();
   };
   tool.document.getElementById('walletCheckInput').value = [
@@ -186,13 +223,33 @@ test('wallet checker: a mixed batch renders rows, isolates failures and totals u
   assert.match(rows[3].error, /not a valid/);
   const html = tool.document.getElementById('walletCheckResults').innerHTML;
   assert.match(html, /wallet-table/);
+  assert.match(html, /0\.001 BTC ≈ \$30\.00/);
+  assert.match(html, /1 ETH ≈ \$2,000\.00/);
+  assert.match(html, /0\.001 BTC ≈ \$30\.00 across 1 address/);
+  assert.match(html, /1 ETH ≈ \$2,000\.00 across 1 address/);
+  assert.match(html, /≈ \$2,030\.00 total/);
+});
+
+test('wallet checker: USD figures are skipped when rate APIs are down', async () => {
+  const tool = await openTool();
+  tool.context.fetch = async (url) => {
+    if (url.includes('blockstream') && url.includes(ADDR_LEGACY))
+      return okJson({
+        chain_stats: { funded_txo_sum: 150000, spent_txo_sum: 50000 },
+        mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0 },
+      });
+    return down();
+  };
+  tool.document.getElementById('walletCheckInput').value = ADDR_LEGACY;
+  const rows = Array.from(await tool.run('walletCheckRun')());
+  assert.strictEqual(rows[0].confirmedSats, 100000);
+  const html = tool.document.getElementById('walletCheckResults').innerHTML;
   assert.match(html, /0\.001 BTC/);
-  assert.match(html, /1 ETH/);
-  assert.match(html, /0\.001 BTC across 1 address/);
-  assert.match(html, /1 ETH across 1 address/);
+  assert.doesNotMatch(html, /≈/);
 });
 
 test('wallet checker: batch cap, empty input, and Clear / Clear seed', async () => {
+  // (kept as the last test on purpose: it also exercises wipeAllSeedMaterial)
   const tool = await openTool();
   let fetches = 0;
   tool.context.fetch = async () => {
