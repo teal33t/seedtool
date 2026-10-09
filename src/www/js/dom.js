@@ -1213,6 +1213,256 @@ const focusOnNextWord = () => {
   });
 };
 
+// Wallet Checker (Explore Blockchain): on-chain balances for pasted Bitcoin /
+// Ethereum addresses. Deliberately online - every lookup sends the address to
+// a third-party API, which the UI warns about in two places.
+const WALLET_CHECK_MAX = 25;
+const WALLET_CHECK_BTC_APIS = [
+  'https://blockstream.info/api/address/',
+  'https://mempool.space/api/address/',
+];
+const WALLET_CHECK_ETH_APIS = [
+  'https://cloudflare-eth.com',
+  'https://ethereum.publicnode.com',
+];
+
+// BIP-173 / BIP-350 checksum (bech32 for witness v0, bech32m for v1+). The
+// bundled bitcoinjs predates bech32m, so bc1p… taproot addresses are checked
+// here instead of via bitcoin.address.toOutputScript.
+const BECH32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+const bech32Polymod = (values) => {
+  const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+  let chk = 1;
+  for (const v of values) {
+    const top = chk >> 25;
+    chk = ((chk & 0x1ffffff) << 5) ^ v;
+    for (let i = 0; i < 5; i++) if ((top >> i) & 1) chk ^= GEN[i];
+  }
+  return chk;
+};
+const bech32ChecksumOk = (hrp, data) => {
+  const expanded = [];
+  for (let i = 0; i < hrp.length; i++) expanded.push(hrp.charCodeAt(i) >> 5);
+  expanded.push(0);
+  for (let i = 0; i < hrp.length; i++) expanded.push(hrp.charCodeAt(i) & 31);
+  // witness v0 uses the bech32 constant, v1+ uses bech32m (BIP-350)
+  const want = data[0] === 0 ? 1 : 0x2bc830a3;
+  return bech32Polymod(expanded.concat(data)) === want;
+};
+
+// Returns { network: 'BTC' | 'ETH', address } or { error: 'reason' }.
+const classifyWalletAddress = (raw) => {
+  const addr = String(raw).trim();
+  if (!addr) return { error: 'empty' };
+  if (/^0x[a-fA-F0-9]{40}$/.test(addr)) return { network: 'ETH', address: addr };
+  const lower = addr.toLowerCase();
+  if (/^(bc1|tb1|bcrt1)/.test(lower)) {
+    if (!lower.startsWith('bc1'))
+      return { error: 'testnet address - only Bitcoin mainnet is supported' };
+    if (lower !== addr && addr.toUpperCase() !== addr)
+      return { error: 'mixed-case bech32 address - use all lowercase' };
+    if (lower.length > 90) return { error: 'bech32 address too long' };
+    const pos = lower.lastIndexOf('1'); // '1' is not in the bech32 charset
+    if (pos < 1 || pos + 7 > lower.length)
+      return { error: 'not a valid Bitcoin or Ethereum address' };
+    const data = [];
+    for (const ch of lower.slice(pos + 1)) {
+      const v = BECH32_CHARSET.indexOf(ch);
+      if (v === -1) return { error: 'not a valid Bitcoin or Ethereum address' };
+      data.push(v);
+    }
+    if (data.length < 7 || data[0] > 16)
+      return { error: 'not a valid Bitcoin or Ethereum address' };
+    if (!bech32ChecksumOk(lower.slice(0, pos), data))
+      return { error: 'bech32 checksum failed' };
+    return { network: 'BTC', address: lower };
+  }
+  if (/^[mn2][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(addr))
+    return { error: 'testnet address - only Bitcoin mainnet is supported' };
+  if (/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(addr)) {
+    try {
+      bitcoin.address.toOutputScript(addr, bitcoin.networks.bitcoin);
+      return { network: 'BTC', address: addr };
+    } catch (e) {
+      return { error: 'Base58Check checksum failed' };
+    }
+  }
+  return { error: 'not a valid Bitcoin or Ethereum address' };
+};
+
+// Split pasted text into address tokens (any whitespace, commas or
+// semicolons), de-duplicating exact repeats so totals can't double-count.
+const parseAddressList = (text) => {
+  const seen = new Set();
+  const out = [];
+  for (const t of String(text || '').split(/[\s,;]+/)) {
+    const token = t.trim();
+    if (!token || seen.has(token)) continue;
+    seen.add(token);
+    out.push(token);
+  }
+  return out;
+};
+
+const satsToBtcString = (sats) => {
+  const sign = sats < 0 ? '-' : '';
+  const abs = Math.abs(sats);
+  const whole = Math.floor(abs / 1e8);
+  const frac = String(abs % 1e8)
+    .padStart(8, '0')
+    .replace(/0+$/, '');
+  return sign + whole + (frac ? '.' + frac : '');
+};
+
+const weiToEthString = (wei) => {
+  const neg = wei < BigInt(0);
+  const abs = neg ? -wei : wei;
+  const str = abs.toString().padStart(19, '0');
+  const whole = str.slice(0, -18).replace(/^0+(?=\d)/, '');
+  const frac = str.slice(-18).replace(/0+$/, '');
+  return (neg ? '-' : '') + whole + (frac ? '.' + frac : '');
+};
+
+const walletCheckFetchJson = async (doFetch, url, opts) => {
+  const resp = await doFetch(url, opts);
+  if (!resp || !resp.ok) throw new Error('HTTP ' + (resp ? resp.status : 'no response'));
+  return resp.json();
+};
+
+const fetchBtcBalance = async (address, doFetch) => {
+  let lastError = null;
+  for (const base of WALLET_CHECK_BTC_APIS) {
+    try {
+      const data = await walletCheckFetchJson(doFetch, base + address);
+      if (!data || !data.chain_stats || !data.mempool_stats)
+        throw new Error('unexpected response');
+      return {
+        confirmedSats: data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum,
+        pendingSats: data.mempool_stats.funded_txo_sum - data.mempool_stats.spent_txo_sum,
+      };
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('lookup failed');
+};
+
+const fetchEthBalance = async (address, doFetch) => {
+  const body = JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'eth_getBalance',
+    params: [address, 'latest'],
+  });
+  const opts = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  };
+  let lastError = null;
+  for (const url of WALLET_CHECK_ETH_APIS) {
+    try {
+      const data = await walletCheckFetchJson(doFetch, url, opts);
+      if (!data || typeof data.result !== 'string')
+        throw new Error((data && data.error && data.error.message) || 'unexpected response');
+      return { wei: BigInt(data.result) };
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('lookup failed');
+};
+
+const walletCheckRender = (rows) => {
+  const el = document.getElementById('walletCheckResults');
+  if (!rows.length) {
+    el.innerHTML = '';
+    return;
+  }
+  let totalSats = 0;
+  let totalWei = BigInt(0);
+  let btcCount = 0;
+  let ethCount = 0;
+  const trs = rows
+    .map((row) => {
+      const addr = `<code>${escapeHtml(row.raw)}</code>`;
+      const netName = row.network === 'BTC' ? 'Bitcoin' : row.network === 'ETH' ? 'Ethereum' : '-';
+      if (row.error) {
+        return `<tr><td class="wallet-addr">${addr}</td><td>${netName}</td><td>-</td><td class="wallet-error-text">${escapeHtml(row.error)}</td></tr>`;
+      }
+      if (row.network === 'BTC') {
+        btcCount += 1;
+        totalSats += row.confirmedSats;
+        const satsNote = `<span class="wallet-sub">${row.confirmedSats} sats</span>`;
+        const pending = row.pendingSats
+          ? `<span class="wallet-sub">${row.pendingSats > 0 ? '+' : ''}${satsToBtcString(row.pendingSats)} BTC unconfirmed</span>`
+          : '';
+        return `<tr><td class="wallet-addr">${addr}</td><td>Bitcoin</td><td>${satsToBtcString(row.confirmedSats)} BTC${satsNote}${pending}</td><td>checked</td></tr>`;
+      }
+      ethCount += 1;
+      totalWei += BigInt(row.wei);
+      return `<tr><td class="wallet-addr">${addr}</td><td>Ethereum</td><td>${weiToEthString(row.wei)} ETH<span class="wallet-sub">${row.wei.toString()} wei</span></td><td>checked</td></tr>`;
+    })
+    .join('');
+  const totals = [];
+  if (btcCount)
+    totals.push(`${satsToBtcString(totalSats)} BTC across ${btcCount} address${btcCount === 1 ? '' : 'es'}`);
+  if (ethCount)
+    totals.push(`${weiToEthString(totalWei)} ETH across ${ethCount} address${ethCount === 1 ? '' : 'es'}`);
+  el.innerHTML =
+    `<table class="labels-table wallet-table"><thead><tr><th>Address</th><th>Network</th><th>Balance</th><th>Status</th></tr></thead><tbody>${trs}</tbody></table>` +
+    (totals.length ? `<p class="wallet-totals"><strong>Totals:</strong> ${totals.join(' · ')}</p>` : '');
+};
+
+const walletCheckRun = async () => {
+  const errorEl = document.getElementById('walletCheckError');
+  errorEl.textContent = '';
+  errorEl.classList.add('hidden');
+  const tokens = parseAddressList(document.getElementById('walletCheckInput').value);
+  if (!tokens.length) {
+    errorEl.textContent = 'Paste at least one Bitcoin or Ethereum address to check.';
+    errorEl.classList.remove('hidden');
+    return [];
+  }
+  if (tokens.length > WALLET_CHECK_MAX) {
+    errorEl.textContent = `That's ${tokens.length} addresses - the limit is ${WALLET_CHECK_MAX} per check. Split them into batches.`;
+    errorEl.classList.remove('hidden');
+    return [];
+  }
+  // Unparseable entries become error rows so the output matches what was pasted
+  const rows = tokens.map((raw) => {
+    const entry = classifyWalletAddress(raw);
+    return entry.error ? { raw, error: entry.error } : { raw, network: entry.network, address: entry.address };
+  });
+  const checked = rows.filter((r) => !r.error);
+  const btn = document.getElementById('walletCheckBtn');
+  btn.disabled = true;
+  await Promise.all(
+    checked.map(async (row) => {
+      try {
+        const bal =
+          row.network === 'BTC'
+            ? await fetchBtcBalance(row.address, fetch)
+            : await fetchEthBalance(row.address, fetch);
+        Object.assign(row, bal);
+      } catch (e) {
+        row.error = 'lookup failed: ' + (e && e.message ? e.message : e);
+      }
+    })
+  );
+  btn.disabled = false;
+  walletCheckRender(rows);
+  return rows;
+};
+
+const walletCheckClear = () => {
+  document.getElementById('walletCheckInput').value = '';
+  document.getElementById('walletCheckResults').innerHTML = '';
+  const errorEl = document.getElementById('walletCheckError');
+  errorEl.textContent = '';
+  errorEl.classList.add('hidden');
+};
+
 // bip39 Passphrase Test
 const bip39PassphraseTest = async () => {
   let msg = '';
@@ -3178,6 +3428,7 @@ const wipeAllSeedMaterial = () => {
   DOM.bip85LoadParent.disabled = true;
   DOM.bip85LoadParent.title = 'No parent key to load';
   xorSplitKey = '';
+  walletCheckClear();
   document
     .querySelectorAll('.xor-seed textarea, .xor-share textarea, .inputMnemonic-word, .lastWord-word')
     .forEach((el) => {

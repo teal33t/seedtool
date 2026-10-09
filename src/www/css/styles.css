@@ -4020,3 +4020,23 @@ body.is-private .seed-hero__word-text { visibility: hidden; }
   .backup-sheet__foot { font-size: 9pt; margin-top: 4mm; }
   .backup-sheet__grid { display: block; width: 100%; max-width: 180mm; max-height: 205mm; margin: 4mm auto; }
 }
+
+/* Wallet Checker */
+.wallet-table .wallet-addr {
+  word-break: break-all;
+}
+.wallet-table .wallet-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--q-dim);
+}
+.wallet-table .wallet-error-text {
+  color: var(--q-danger);
+}
+.wallet-totals {
+  margin-top: 12px;
+  font-size: 0.875rem;
+  color: var(--q-muted);
+  line-height: 1.5;
+}

@@ -24,7 +24,7 @@
     'single', 'message', 'learn', 'tour', 'recover', 'silent',
     'shamir', 'slip39', // slip39 kept as alias for back-compat
     'labels', 'lightning', 'miniscript', 'psbt', 'bip353', 'nostr',
-    'about', 'credits',
+    'walletcheck', 'about', 'credits',
   ]);
 
   const LS_DISMISSED = 'seedtool:dismissed-explainers';
