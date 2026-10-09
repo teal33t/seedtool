@@ -2611,7 +2611,7 @@ gpg --verify signature.txt</code></pre>
       <div class="explainer" data-explainer="walletcheck">
         <span class="explainer__icon" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></span>
         <div class="explainer__body">
-          <p><strong>Paste anything.</strong> Addresses are pulled out of the text automatically - export lines like <code>bc1q… | 0.0078</code>, notes and separators are fine, only real addresses get checked.</p>
+          <p><strong>Paste anything.</strong> Addresses are pulled out of the text automatically - export lines like <code>bc1q… | 0.0078</code>, notes and separators are fine, only real addresses get checked. Results come back sorted by balance, biggest first.</p>
           <p><strong>Bitcoin</strong> addresses (<code>1…</code> legacy, <code>3…</code> script, <code>bc1q…</code> segwit, <code>bc1p…</code> taproot) are checked against an Esplora block explorer - Blockstream first, mempool.space as fallback. The balance shown is the confirmed total, with any unconfirmed change listed separately.</p>
           <p><strong>Ethereum</strong> addresses (<code>0x…</code>) are checked with <code>eth_getBalance</code> against a public JSON-RPC node - Cloudflare first, PublicNode as fallback.</p>
           <p><strong>USD</strong> figures are live conversions from CoinGecko (Coinbase as fallback), cached for one minute. The rate requests carry no addresses - but like the balance lookups they do reveal your IP to the provider.</p>
@@ -2626,7 +2626,7 @@ gpg --verify signature.txt</code></pre>
         <div class="copy-wrapper">
           <textarea id="walletCheckInput" class="textarea-input" rows="5" placeholder="bc1q… or 0x…&#10;One per line - commas and spaces work too" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
         </div>
-        <p class="recover-hint">Up to 100 addresses per check. Paste raw text if you like - addresses are pulled out of it; amounts, notes and separators are ignored. Mainnet only - testnet addresses are reported as errors.</p>
+        <p class="recover-hint">Up to 100 addresses per check. Paste raw text if you like - addresses are pulled out of it; amounts, notes and separators are ignored. Results are sorted by balance, biggest first. Mainnet only - testnet addresses are reported as errors.</p>
         <div class="ms-actions">
           <button type="button" class="btn btn--primary" id="walletCheckBtn" onclick="walletCheckRun()">Check balances</button>
           <button type="button" class="btn" id="walletCheckClearBtn" onclick="walletCheckClear()">Clear</button>

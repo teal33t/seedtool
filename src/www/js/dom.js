@@ -1439,6 +1439,23 @@ const getUsdRates = async (doFetch) => {
   return rates;
 };
 
+// Biggest balance first. Rows are compared in USD when rates are available -
+// the only fair cross-chain key - and in native coins otherwise (exact within
+// one chain). Unconfirmed amounts don't count; error rows have no balance and
+// keep their relative order at the bottom.
+const walletRowValue = (row, rates) => {
+  const native = row.network === 'BTC' ? row.confirmedSats / 1e8 : Number(row.wei) / 1e18;
+  if (!rates) return native;
+  return native * (row.network === 'BTC' ? rates.btcUsd : rates.ethUsd);
+};
+
+const sortWalletRows = (rows, rates) => {
+  const checked = rows.filter((r) => !r.error);
+  const errors = rows.filter((r) => r.error);
+  checked.sort((a, b) => walletRowValue(b, rates) - walletRowValue(a, rates));
+  return checked.concat(errors);
+};
+
 const walletCheckRender = (rows, rates) => {
   const el = document.getElementById('walletCheckResults');
   if (!rows.length) {
@@ -1531,8 +1548,9 @@ const walletCheckRun = async () => {
     ),
   ]);
   btn.disabled = false;
-  walletCheckRender(rows, rates);
-  return rows;
+  const ranked = sortWalletRows(rows, rates);
+  walletCheckRender(ranked, rates);
+  return ranked;
 };
 
 const walletCheckClear = () => {

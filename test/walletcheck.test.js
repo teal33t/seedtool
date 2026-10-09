@@ -252,8 +252,10 @@ test('wallet checker: a mixed batch renders rows, isolates failures and totals u
   ].join('\n');
   const rows = Array.from(await tool.run('walletCheckRun')());
   assert.strictEqual(rows.length, 4);
-  assert.strictEqual(rows[0].confirmedSats, 100000);
-  assert.strictEqual(rows[1].wei, BigInt('1000000000000000000'));
+  // biggest first: the ETH row ($2,000) ranks above the BTC row ($30);
+  // error rows have no balance and keep input order at the bottom
+  assert.strictEqual(rows[0].wei, BigInt('1000000000000000000'));
+  assert.strictEqual(rows[1].confirmedSats, 100000);
   assert.match(rows[2].error, /lookup failed/);
   assert.match(rows[3].error, /checksum/);
   const html = tool.document.getElementById('walletCheckResults').innerHTML;
@@ -263,6 +265,59 @@ test('wallet checker: a mixed batch renders rows, isolates failures and totals u
   assert.match(html, /0\.001 BTC ≈ \$30\.00 across 1 address/);
   assert.match(html, /1 ETH ≈ \$2,000\.00 across 1 address/);
   assert.match(html, /≈ \$2,030\.00 total/);
+});
+
+test('wallet checker: results are sorted by balance, biggest first', async () => {
+  const corrupted = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5';
+  // with rates: rows compare in USD across chains, error row pinned to the bottom
+  const tool = await openTool();
+  tool.context.fetch = async (url) => {
+    const s = String(url);
+    if (s.includes('coingecko')) return okJson({ bitcoin: { usd: 30000 }, ethereum: { usd: 2000 } });
+    if (s.includes('cloudflare-eth')) return okJson({ jsonrpc: '2.0', id: 1, result: '0xde0b6b3a7640000' });
+    if (s.includes('blockstream') && s.includes(ADDR_SEGWIT))
+      return okJson({ chain_stats: { funded_txo_sum: 20000, spent_txo_sum: 0 }, mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0 } });
+    if (s.includes('blockstream') && s.includes(ADDR_SCRIPT))
+      return okJson({ chain_stats: { funded_txo_sum: 500000, spent_txo_sum: 0 }, mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0 } });
+    if (s.includes('blockstream') && s.includes(ADDR_LEGACY))
+      return okJson({ chain_stats: { funded_txo_sum: 100000, spent_txo_sum: 0 }, mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0 } });
+    return down();
+  };
+  tool.document.getElementById('walletCheckInput').value = [
+    ADDR_SEGWIT, // $0.60
+    ADDR_SCRIPT, // $15
+    ADDR_ETH, // $2,000
+    ADDR_LEGACY, // $3
+    corrupted,
+  ].join('\n');
+  const rows = Array.from(await tool.run('walletCheckRun')());
+  assert.deepStrictEqual(
+    Array.from(rows, (r) => r.raw),
+    [ADDR_ETH, ADDR_SCRIPT, ADDR_LEGACY, ADDR_SEGWIT, corrupted]
+  );
+  const html = tool.document.getElementById('walletCheckResults').innerHTML;
+  assert.ok(html.indexOf(ADDR_ETH) < html.indexOf(ADDR_SCRIPT));
+  assert.ok(html.indexOf(ADDR_SCRIPT) < html.indexOf(ADDR_LEGACY));
+  assert.ok(html.indexOf(ADDR_LEGACY) < html.indexOf(ADDR_SEGWIT));
+  assert.ok(html.indexOf(ADDR_SEGWIT) < html.indexOf(corrupted));
+
+  // rate APIs down (fresh tool = fresh rate cache): native amounts still rank
+  const bare = await openTool();
+  bare.context.fetch = async (url) => {
+    const s = String(url);
+    if (s.includes('blockstream') && s.includes(ADDR_SEGWIT))
+      return okJson({ chain_stats: { funded_txo_sum: 500000, spent_txo_sum: 0 }, mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0 } });
+    if (s.includes('blockstream') && s.includes(ADDR_LEGACY))
+      return okJson({ chain_stats: { funded_txo_sum: 100000, spent_txo_sum: 0 }, mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0 } });
+    return down();
+  };
+  bare.document.getElementById('walletCheckInput').value = `${ADDR_LEGACY}\n${ADDR_SEGWIT}`;
+  const bareRows = Array.from(await bare.run('walletCheckRun')());
+  assert.deepStrictEqual(
+    Array.from(bareRows, (r) => r.raw),
+    [ADDR_SEGWIT, ADDR_LEGACY]
+  );
+  assert.doesNotMatch(bare.document.getElementById('walletCheckResults').innerHTML, /≈/);
 });
 
 test('wallet checker: USD figures are skipped when rate APIs are down', async () => {
