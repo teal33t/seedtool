@@ -4227,6 +4227,17 @@ body.is-private .seed-hero__word-text { visibility: hidden; }
         </div>
       </section>
 
+      <section class="home__group" data-group="explore">
+        <h2 class="home__heading">Explore Blockchain <span class="home__heading-hint">Goes online</span></h2>
+        <div class="cards">
+          <a class="card" href="#/walletcheck" data-route="walletcheck" data-keywords="wallet checker balance balances blockchain explorer address addresses btc eth ethereum bitcoin onchain on-chain check funds satoshi wei lookup">
+            <span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></span>
+            <span class="card__title">Wallet Checker</span>
+            <span class="card__desc">Paste one or many Bitcoin or Ethereum addresses and see their on-chain balance. Goes online - the addresses you check are sent to public block explorer APIs.</span>
+          </a>
+        </div>
+      </section>
+
       <section class="home__group" data-group="seed">
         <h2 class="home__heading">From your seed <span class="home__heading-hint" data-seed-empty>Load a seed to unlock</span></h2>
         <div class="cards">
@@ -4264,17 +4275,6 @@ body.is-private .seed-hero__word-text { visibility: hidden; }
             <span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg></span>
             <span class="card__title">Seed XOR</span>
             <span class="card__desc">Split your seed into shares that are all needed to rebuild it, or combine shares back into a seed.</span>
-          </a>
-        </div>
-      </section>
-
-      <section class="home__group" data-group="explore">
-        <h2 class="home__heading">Explore Blockchain <span class="home__heading-hint">Goes online</span></h2>
-        <div class="cards">
-          <a class="card" href="#/walletcheck" data-route="walletcheck" data-keywords="wallet checker balance balances blockchain explorer address addresses btc eth ethereum bitcoin onchain on-chain check funds satoshi wei lookup">
-            <span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></span>
-            <span class="card__title">Wallet Checker</span>
-            <span class="card__desc">Paste one or many Bitcoin or Ethereum addresses and see their on-chain balance. Goes online - the addresses you check are sent to public block explorer APIs.</span>
           </a>
         </div>
       </section>
@@ -6660,7 +6660,7 @@ gpg --verify signature.txt</code></pre>
           <p><strong>Bitcoin</strong> addresses (<code>1…</code> legacy, <code>3…</code> script, <code>bc1q…</code> segwit, <code>bc1p…</code> taproot) are checked against an Esplora block explorer - Blockstream first, mempool.space as fallback. The balance shown is the confirmed total, with any unconfirmed change listed separately.</p>
           <p><strong>Ethereum</strong> addresses (<code>0x…</code>) are checked with <code>eth_getBalance</code> against a public JSON-RPC node - Cloudflare first, PublicNode as fallback.</p>
           <p><strong>USD</strong> figures are live conversions from CoinGecko (Coinbase as fallback), cached for one minute. The rate requests carry no addresses - but like the balance lookups they do reveal your IP to the provider.</p>
-          <p class="recover-hint">Looking up an address tells the API operator - and anyone watching your connection - that you're interested in that address. Grouping several addresses in one batch links them at the API too. For sensitive lookups use Tor Browser. Results live only in this page - nothing is stored or sent anywhere else.</p>
+          <p class="recover-hint">Looking up an address tells the API operator - and anyone watching your connection - that you're interested in that address. Grouping several addresses in one batch links them at the API too. Clicking an address opens it on a block explorer (Blockstream for Bitcoin, Etherscan for Ethereum) in a new tab - the explorer sees that visit too. For sensitive lookups use Tor Browser. Results live only in this page - nothing is stored or sent anywhere else.</p>
         </div>
         <button type="button" class="explainer__dismiss" data-dismiss-explainer="walletcheck" title="Dismiss" aria-label="Dismiss">&times;</button>
       </div>
@@ -199344,7 +199344,11 @@ const walletCheckRender = (rows, rates) => {
   let ethCount = 0;
   const trs = rows
     .map((row) => {
-      const addr = `<code>${escapeHtml(row.raw)}</code>`;
+      // Every resolvable address links to a public block explorer in a new
+      // tab; noreferrer keeps this page's URL out of the explorer's logs.
+      const addr = row.network
+        ? `<code><a href="${row.network === 'BTC' ? 'https://blockstream.info/address/' : 'https://etherscan.io/address/'}${escapeHtml(row.address || row.raw)}" target="_blank" rel="noopener noreferrer">${escapeHtml(row.raw)}</a></code>`
+        : `<code>${escapeHtml(row.raw)}</code>`;
       const netName = row.network === 'BTC' ? 'Bitcoin' : row.network === 'ETH' ? 'Ethereum' : '-';
       if (row.error) {
         return `<tr><td class="wallet-addr">${addr}</td><td>${netName}</td><td>-</td><td class="wallet-error-text">${escapeHtml(row.error)}</td></tr>`;

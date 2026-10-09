@@ -1468,7 +1468,11 @@ const walletCheckRender = (rows, rates) => {
   let ethCount = 0;
   const trs = rows
     .map((row) => {
-      const addr = `<code>${escapeHtml(row.raw)}</code>`;
+      // Every resolvable address links to a public block explorer in a new
+      // tab; noreferrer keeps this page's URL out of the explorer's logs.
+      const addr = row.network
+        ? `<code><a href="${row.network === 'BTC' ? 'https://blockstream.info/address/' : 'https://etherscan.io/address/'}${escapeHtml(row.address || row.raw)}" target="_blank" rel="noopener noreferrer">${escapeHtml(row.raw)}</a></code>`
+        : `<code>${escapeHtml(row.raw)}</code>`;
       const netName = row.network === 'BTC' ? 'Bitcoin' : row.network === 'ETH' ? 'Ethereum' : '-';
       if (row.error) {
         return `<tr><td class="wallet-addr">${addr}</td><td>${netName}</td><td>-</td><td class="wallet-error-text">${escapeHtml(row.error)}</td></tr>`;

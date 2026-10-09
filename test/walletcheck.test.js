@@ -265,6 +265,13 @@ test('wallet checker: a mixed batch renders rows, isolates failures and totals u
   assert.match(html, /0\.001 BTC ≈ \$30\.00 across 1 address/);
   assert.match(html, /1 ETH ≈ \$2,000\.00 across 1 address/);
   assert.match(html, /≈ \$2,030\.00 total/);
+  // resolvable addresses link to a block explorer in a new tab - including
+  // the valid address whose lookup failed; the corrupt token stays plain text
+  assert.match(html, new RegExp(`href="https://blockstream\\.info/address/${ADDR_LEGACY}"`));
+  assert.match(html, new RegExp(`href="https://etherscan\\.io/address/${ADDR_ETH}"`));
+  assert.match(html, new RegExp(`href="https://blockstream\\.info/address/${ADDR_SCRIPT}"`));
+  assert.match(html, /target="_blank" rel="noopener noreferrer"/);
+  assert.ok(!html.includes('blockstream.info/address/bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5'));
 });
 
 test('wallet checker: results are sorted by balance, biggest first', async () => {
