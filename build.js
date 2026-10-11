@@ -19,14 +19,16 @@ console.log('Building HTML file...');
     // requests allowed are the opt-in online features: PayNym avatars
     // (images), BIP-353 DNS-over-HTTPS lookups, the Wallet Checker's
     // balance APIs (two per chain, each with a fallback), and its USD rate
-    // APIs (CoinGecko with a Coinbase fallback). dev.html has no
-    // policy, so the dev server's hot reload keeps working.
+    // APIs (CoinGecko with a Coinbase fallback). 'self' covers the
+    // Dormant Wallets Research snapshot (dormant-wallets.json), fetched
+    // same-origin only. dev.html has no policy, so the dev server's hot
+    // reload keeps working.
     const csp = [
       "default-src 'none'",
       "script-src 'unsafe-inline'",
       "style-src 'unsafe-inline'",
       'img-src data: blob: https://paynym.rs',
-      'connect-src https://cloudflare-dns.com https://dns.google https://blockstream.info https://mempool.space https://cloudflare-eth.com https://ethereum.publicnode.com https://api.coingecko.com https://api.coinbase.com',
+      "connect-src 'self' https://cloudflare-dns.com https://dns.google https://blockstream.info https://mempool.space https://cloudflare-eth.com https://ethereum.publicnode.com https://api.coingecko.com https://api.coinbase.com",
       "base-uri 'none'",
       "form-action 'none'",
       "object-src 'none'",
@@ -72,6 +74,15 @@ console.log('Building HTML file...');
     const output = path.join(__dirname, '/dist/index.html');
     await writeFile(output, result, 'utf8');
     console.log(`Task completed! Built file is available at ${output}`);
+    // The Dormant Wallets Research snapshot ships alongside the page and is
+    // fetched same-origin ('self' in the CSP).
+    const snapshotSrc = path.join(__dirname, '/data/dormant-wallets.json');
+    if (fs.existsSync(snapshotSrc)) {
+      fs.copyFileSync(snapshotSrc, path.join(__dirname, '/dist/dormant-wallets.json'));
+      console.log('dormant-wallets.json copied to dist...');
+    } else {
+      console.warn('WARNING: data/dormant-wallets.json missing - Dormant Wallets Research will have no data');
+    }
   } catch (error) {
     console.log('Build failed', error);
   }

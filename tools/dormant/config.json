@@ -1,0 +1,99 @@
+{
+  "esploraBase": "https://mempool.space/api",
+  "esploraFallback": "https://blockstream.info/api",
+  "bciBase": "https://blockchain.info",
+  "bcyBase": "https://api.blockcypher.com/v1/btc/main",
+  "heightStart": 0,
+  "heightEnd": 33000,
+  "heightStep": 3,
+  "perSecond": 2,
+  "batchPrefetch": false,
+  "statsBatch": 100,
+  "unspentBatch": 15,
+  "minDormantYears": 5,
+  "maxWallets": 6000,
+  "ofacUrl": "https://sanctionslistservice.ofac.treas.gov/api/publicationpreview/exports/sdn_enhanced.xml",
+  "pressUrls": [
+    {
+      "url": "https://blog.wizsec.jp/2020/06/mtgox-march-2011-theft.html",
+      "sourceName": "WizSec: The 80,000 stolen MtGox bitcoins (forensic analysis)",
+      "label": "MtGox hack (2011 theft)",
+      "category": "hack-theft",
+      "addresses": ["1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF"],
+      "extractExtras": true
+    },
+    {
+      "url": "https://blog.wizsec.jp/2017/07/breaking-open-mtgox-1.html",
+      "sourceName": "WizSec: Breaking open the MtGox case, part 1 (forensic analysis)",
+      "label": "MtGox hack (2011 theft)",
+      "category": "hack-theft",
+      "addresses": ["1nikuYD1PUhAkhJaQWzLiLahuJBe9a2sZ"],
+      "extractExtras": true
+    }
+  ],
+  "walletexplorerClusters": [
+    { "wallet": "BTC-e.com", "label": "BTC-e exchange cluster (WalletExplorer)", "category": "exchange" },
+    { "wallet": "SilkRoadMarketplace", "label": "Silk Road darknet market (WalletExplorer)", "category": "darknet" },
+    { "wallet": "SilkRoad2Market", "label": "Silk Road 2 darknet market (WalletExplorer)", "category": "darknet" },
+    { "wallet": "AlphaBayMarket", "label": "AlphaBay darknet market (WalletExplorer)", "category": "darknet" },
+    { "wallet": "AgoraMarket", "label": "Agora darknet market (WalletExplorer)", "category": "darknet" },
+    { "wallet": "AbraxasMarket", "label": "Abraxas darknet market (WalletExplorer)", "category": "darknet" }
+  ],
+  "webLists": [
+    {
+      "url": "https://bitinfocharts.com/top-100-dormant_10y-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 dormant 10+ years addresses",
+      "label": "Dormant 10+ years, top-100 by balance (list claim)",
+      "category": "dormant-claim"
+    },
+    {
+      "url": "https://bitinfocharts.com/top-100-dormant_9y-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 dormant 9+ years addresses",
+      "label": "Dormant 9+ years, top-100 by balance (list claim)",
+      "category": "dormant-claim"
+    },
+    {
+      "url": "https://bitinfocharts.com/top-100-dormant_8y-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 dormant 8+ years addresses",
+      "label": "Dormant 8+ years, top-100 by balance (list claim)",
+      "category": "dormant-claim"
+    },
+    {
+      "url": "https://bitinfocharts.com/top-100-dormant_7y-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 dormant 7+ years addresses",
+      "label": "Dormant 7+ years, top-100 by balance (list claim)",
+      "category": "dormant-claim"
+    },
+    {
+      "url": "https://bitinfocharts.com/top-100-dormant_6y-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 dormant 6+ years addresses",
+      "label": "Dormant 6+ years, top-100 by balance (list claim)",
+      "category": "dormant-claim"
+    },
+    {
+      "url": "https://bitinfocharts.com/top-100-dormant_5y-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 dormant 5+ years addresses",
+      "label": "Dormant 5+ years, top-100 by balance (list claim)",
+      "category": "dormant-claim"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Sikkra/satoshi-stash-cluster-e/main/satoshi_stash_cluster_e_address_list.csv",
+      "sourceName": "Sikkra/satoshi-stash-cluster-e: derived Patoshi cluster-E addresses (GitHub)",
+      "label": "Satoshi-era Patoshi miner output (list claim)",
+      "category": "satoshi-era"
+    },
+    {
+      "url": "https://bitinfocharts.com/top-100-richest-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 richest addresses",
+      "label": "Top-100 by balance (BitInfoCharts rich list)",
+      "category": "large-holder"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/amutek/Lost-Bitcoin/main/lost.txt",
+      "sourceName": "amutek/Lost-Bitcoin: zombie address list (GitHub)",
+      "label": "Zombie/lost-coin candidate (list claim)",
+      "category": "lost-coins",
+      "maxRows": 2500
+    }
+  ]
+}

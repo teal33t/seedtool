@@ -8,3 +8,5 @@ release-assets/
 RELEASE_NOTES_*.md
 test.txt
 .gstack/
+.cache/
+tools/dormant/out/
