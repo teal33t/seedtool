@@ -4080,6 +4080,21 @@ body.is-private .seed-hero__word-text { visibility: hidden; }
   border-color: var(--q-accent-hi);
   color: #fff;
 }
+.dormant-rate {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--q-border);
+  border-left: 3px solid var(--q-accent-hi);
+  border-radius: 6px;
+  background: var(--q-light-grey);
+  color: var(--q-white);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.dormant-rate strong {
+  color: var(--q-accent-hi);
+  font-variant-numeric: tabular-nums;
+}
 .dormant-table-wrap {
   overflow-x: auto;
   margin: 12px 0;

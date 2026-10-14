@@ -260,10 +260,22 @@ const initDormant = async () => {
     return;
   }
   const snap = dormantState.snapshot;
-  const priceInfo = Number.isFinite(snap.priceUsd) && snap.priceUsd > 0
-    ? ` BTC/USD price captured when this snapshot was built: ${dormantFormatUsd(snap.priceUsd)}${snap.priceAt ? ` on ${String(snap.priceAt).slice(0, 10)}` : ''}${snap.priceSource ? ` (via ${String(snap.priceSource)})` : ''} - USD amounts use that price, not a live rate.`
-    : ' USD amounts unavailable: no BTC/USD price was captured when this snapshot was built.';
-  infoEl.textContent = `Snapshot generated ${snap.generatedAt} - ${snap.count} dormant wallets shipped (${snap.totalPool} in the compiled pool). Balances and dates are from that snapshot, not live.${priceInfo}`;
+  // The rate badge is the user-facing answer to "what rate, from where": the
+  // USD figures in the table are balance x this snapshot price - never a rate
+  // the browser fetches, so nothing here goes online.
+  const rateEl = document.getElementById('dormantRateNote');
+  if (Number.isFinite(snap.priceUsd) && snap.priceUsd > 0) {
+    const captured = snap.priceAt
+      ? `${String(snap.priceAt).slice(0, 10)} ${String(snap.priceAt).slice(11, 16)} UTC`
+      : 'date not recorded';
+    rateEl.innerHTML = `<strong>USD rate used in this table: 1 BTC = ${escapeHtml(dormantFormatUsd(snap.priceUsd))}</strong>`
+      + ` - reported by ${escapeHtml(String(snap.priceSource || 'an unrecorded source'))}, captured ${escapeHtml(captured)} when this snapshot was built.`
+      + ' Not a live rate: the browser never fetches one.';
+  } else {
+    rateEl.innerHTML = '<strong>USD amounts unavailable</strong> - no BTC/USD price was captured when this snapshot was built.';
+  }
+  rateEl.hidden = false;
+  infoEl.textContent = `Snapshot generated ${snap.generatedAt} - ${snap.count} dormant wallets shipped (${snap.totalPool} in the compiled pool). Balances and dates are from that snapshot, not live.`;
   dormantRenderChips();
   dormantApply();
 };

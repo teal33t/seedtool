@@ -287,9 +287,12 @@ test('dormant: USD values come from the snapshot price, never a live rate', asyn
   assert.ok(html.includes('$50,000')); // 0.5 BTC row formats at the same price
   const summary = tool.run('document.getElementById("dormantSummary").textContent');
   assert.match(summary, /\(≈ \$955,050,000\)/); // 9550.5 BTC total at the snapshot price
-  const info = tool.run('document.getElementById("dormantSnapshotInfo").textContent');
-  assert.match(info, /BTC\/USD price captured when this snapshot was built: \$100,000/);
-  assert.match(info, /via test-feed/);
+  const rate = tool.run('document.getElementById("dormantRateNote").innerHTML');
+  assert.match(rate, /1 BTC = \$100,000/);
+  assert.match(rate, /reported by test-feed/);
+  assert.match(rate, /captured 2026-10-10 00:00 UTC/);
+  assert.match(rate, /Not a live rate/);
+  assert.strictEqual(tool.run('document.getElementById("dormantRateNote").hidden'), false);
   tool.run('dormantShowDetail(0)');
   const detail = tool.run('document.getElementById("dormantDetail").innerHTML');
   assert.match(detail, /\$800,000,000 at snapshot price/);
@@ -310,8 +313,8 @@ test('dormant: snapshots without a captured price degrade gracefully', async () 
   assert.ok(!html.includes('$')); // no USD cells invented
   const summary = tool.run('document.getElementById("dormantSummary").textContent');
   assert.ok(!summary.includes('≈'));
-  const info = tool.run('document.getElementById("dormantSnapshotInfo").textContent');
-  assert.match(info, /USD amounts unavailable/);
+  const rate = tool.run('document.getElementById("dormantRateNote").innerHTML');
+  assert.match(rate, /USD amounts unavailable/);
 });
 
 test('dormant: missing snapshot degrades to an honest message', async () => {
