@@ -22,6 +22,7 @@ const {
   resolveLastActive,
 } = require('../tools/dormant/lib/normalize');
 const { HostPool } = require('../tools/dormant/lib/hosts');
+const { fetchPriceUsd } = require('../tools/dormant/lib/price');
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -499,6 +500,51 @@ test('dormant: host pool never boxes a rate-limited host - quota is not death', 
   await assert.rejects(() => pool.esploraGet('/z', null), /HTTP 429/);
   assert.strictEqual(await pool.esploraGet('/w', null), 'from-A');
   assert.strictEqual(calls.A, 4);
+});
+
+test('dormant: fetchPriceUsd parses known source shapes in order', async () => {
+  const seen = [];
+  const ok = (body) => ({ ok: true, status: 200, json: async () => body });
+  // first source answers with the mempool.space shape
+  let price = await fetchPriceUsd({
+    nowMs: 1760000000000,
+    fetchImpl: async (url) => {
+      seen.push(url);
+      return ok({ USD: 111234.5 });
+    },
+  });
+  assert.strictEqual(price.priceUsd, 111234.5);
+  assert.strictEqual(price.source, 'mempool.space');
+  assert.strictEqual(price.priceAt, new Date(1760000000000).toISOString());
+  assert.strictEqual(seen.length, 1);
+  // a dead first source falls through to the Coinbase shape
+  price = await fetchPriceUsd({
+    fetchImpl: async (url) => {
+      seen.push(url);
+      if (url.includes('mempool')) throw new Error('ECONNRESET');
+      if (url.includes('coinbase')) return ok({ data: { amount: '112000.00' } });
+      return ok({ USD: { last: 1 } });
+    },
+  });
+  assert.strictEqual(price.priceUsd, 112000);
+  assert.strictEqual(price.source, 'Coinbase');
+  // non-OK responses also fall through to blockchain.info
+  price = await fetchPriceUsd({
+    fetchImpl: async (url) => {
+      if (url.includes('blockchain')) return ok({ USD: { last: 113000 } });
+      return { ok: false, status: 500, json: async () => ({}) };
+    },
+  });
+  assert.strictEqual(price.priceUsd, 113000);
+  assert.strictEqual(price.source, 'blockchain.info');
+});
+
+test('dormant: fetchPriceUsd returns null instead of throwing when all sources fail', async () => {
+  const boom = async () => { throw new Error('offline'); };
+  assert.strictEqual(await fetchPriceUsd({ fetchImpl: boom }), null);
+  // garbage payloads parse to null too
+  assert.strictEqual(await fetchPriceUsd({ fetchImpl: async () => ({ ok: true, json: async () => ({}) }) }), null);
+  assert.strictEqual(await fetchPriceUsd({ fetchImpl: async () => ({ ok: true, json: async () => ({ USD: -1 }) }) }), null);
 });
 
 (async () => {

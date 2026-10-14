@@ -31,6 +31,20 @@ const dormantYears = (w) => {
   return ms > 0 ? ms / DORMANT_YEAR_MS : 0;
 };
 
+// USD at the snapshot's captured BTC/USD price - never a live rate. null when
+// the snapshot shipped without a price: the column degrades to a dash rather
+// than guessing.
+const dormantUsd = (w) => {
+  const price = dormantState.snapshot ? dormantState.snapshot.priceUsd : null;
+  return Number.isFinite(price) && price > 0 ? (w.balanceBtc || 0) * price : null;
+};
+
+const dormantFormatUsd = (usd) => {
+  if (usd == null || !Number.isFinite(usd)) return '—';
+  const digits = Math.abs(usd) >= 1000 ? 0 : 2;
+  return '$' + usd.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+};
+
 const dormantCategories = (wallets) => {
   const seen = new Set();
   for (const w of wallets || []) {
@@ -42,6 +56,7 @@ const dormantCategories = (wallets) => {
 };
 
 // Pure filter + sort over the pool; the UI's thresholds are inputs here.
+// Blank/omitted thresholds mean "no floor" - everything in the pool shows.
 const dormantFilterSort = (wallets, opts) => {
   const minYears = Number(opts.minYears) || 0;
   const minBtc = Number(opts.minBtc) || 0;
@@ -82,7 +97,7 @@ const dormantRowHtml = (w, idx) => {
   const first = w.firstSeen ? escapeHtml(w.firstSeen.slice(0, 10)) : '?';
   const last = w.lastActive ? escapeHtml(w.lastActive.slice(0, 10)) : '?';
   const tags = (w.tags || []).map(dormantTagChip).join(' ');
-  return `<tr data-idx="${idx}" tabindex="0" onclick="dormantShowDetail(+this.dataset.idx)"><td><code><a href="https://blockstream.info/address/${addr}" target="_blank" rel="noopener noreferrer">${addr}</a></code></td><td>${(w.balanceBtc || 0).toFixed(8)}</td><td>${years}y</td><td>${first}</td><td>${last}</td><td>${tags}</td></tr>`;
+  return `<tr data-idx="${idx}" tabindex="0" onclick="dormantShowDetail(+this.dataset.idx)"><td><code><a href="https://blockstream.info/address/${addr}" target="_blank" rel="noopener noreferrer">${addr}</a></code></td><td>${(w.balanceBtc || 0).toFixed(8)}</td><td>${escapeHtml(dormantFormatUsd(dormantUsd(w)))}</td><td>${years}y</td><td>${first}</td><td>${last}</td><td>${tags}</td></tr>`;
 };
 
 const dormantRender = () => {
@@ -97,7 +112,9 @@ const dormantRender = () => {
   const pageRows = st.filtered.slice(start, start + DORMANT_PAGE_SIZE);
   rowsEl.innerHTML = pageRows.map((w) => dormantRowHtml(w, st.filtered.indexOf(w))).join('');
   const totalBtc = st.filtered.reduce((sum, w) => sum + (w.balanceBtc || 0), 0);
-  summaryEl.textContent = `${st.filtered.length} wallet${st.filtered.length === 1 ? '' : 's'} match - ${totalBtc.toFixed(2)} BTC on this page's selection (page ${st.page + 1} of ${totalPages})`;
+  const price = st.snapshot ? st.snapshot.priceUsd : null;
+  const usdPart = Number.isFinite(price) && price > 0 ? ` (≈ ${dormantFormatUsd(totalBtc * price)})` : '';
+  summaryEl.textContent = `${st.filtered.length} wallet${st.filtered.length === 1 ? '' : 's'} match - ${totalBtc.toFixed(2)} BTC${usdPart} on this page's selection (page ${st.page + 1} of ${totalPages})`;
   pageEl.textContent = `${st.filtered.length} matches`;
 };
 
@@ -171,7 +188,7 @@ const dormantShowDetail = (idx) => {
   }).join('');
   el.innerHTML = `
     <h3>${escapeHtml(w.address)}</h3>
-    <p>${(w.balanceBtc || 0).toFixed(8)} BTC - dormant ${dormantYears(w).toFixed(1)} years (coins last moved ${escapeHtml((w.lastActive || 'unknown').slice(0, 10))}) - ${w.txCount || 0} tx${w.txCount === 1 ? '' : 's'}${w.blockHeight != null ? ` - first seen in block ${w.blockHeight}` : ''}</p>
+    <p>${(w.balanceBtc || 0).toFixed(8)} BTC${dormantUsd(w) == null ? '' : ` (≈ ${escapeHtml(dormantFormatUsd(dormantUsd(w)))} at snapshot price)`} - dormant ${dormantYears(w).toFixed(1)} years (coins last moved ${escapeHtml((w.lastActive || 'unknown').slice(0, 10))}) - ${w.txCount || 0} tx${w.txCount === 1 ? '' : 's'}${w.blockHeight != null ? ` - first seen in block ${w.blockHeight}` : ''}</p>
     <p><a href="https://blockstream.info/address/${escapeHtml(w.address)}" target="_blank" rel="noopener noreferrer">Open on block explorer</a></p>
     ${dormantMinedHtml(w)}
     ${w.firstSeenExact === false ? '<p class="recover-hint">First-seen date is an upper bound - this address has too many transactions to walk to the very first one.</p>' : ''}
@@ -190,10 +207,11 @@ const dormantPage = (delta) => {
 
 // Export content builders (pure): the click handlers wrap these in a download.
 const dormantExportCsv = () => {
-  const rows = [['address', 'balanceBtc', 'dormantYears', 'firstSeen', 'lastActive', 'txCount', 'tags', 'txid', 'minedSats']];
+  const rows = [['address', 'balanceBtc', 'balanceUsd', 'dormantYears', 'firstSeen', 'lastActive', 'txCount', 'tags', 'txid', 'minedSats']];
   for (const w of dormantState.filtered) {
     const tags = (w.tags || []).map((t) => `${t.label} (${t.category}/${t.confidence})`).join('; ');
-    rows.push([w.address, (w.balanceBtc || 0).toFixed(8), dormantYears(w).toFixed(1), w.firstSeen || '', w.lastActive || '', w.txCount || 0, tags, w.txid || '', w.minedSats != null ? w.minedSats : '']);
+    const usd = dormantUsd(w);
+    rows.push([w.address, (w.balanceBtc || 0).toFixed(8), usd == null ? '' : usd.toFixed(2), dormantYears(w).toFixed(1), w.firstSeen || '', w.lastActive || '', w.txCount || 0, tags, w.txid || '', w.minedSats != null ? w.minedSats : '']);
   }
   return rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
 };
@@ -201,6 +219,8 @@ const dormantExportCsv = () => {
 const dormantExportJson = () => JSON.stringify({
   exportedAt: new Date().toISOString(),
   generatedAt: dormantState.snapshot ? dormantState.snapshot.generatedAt : null,
+  priceUsd: dormantState.snapshot ? (dormantState.snapshot.priceUsd ?? null) : null,
+  priceAt: dormantState.snapshot ? (dormantState.snapshot.priceAt ?? null) : null,
   count: dormantState.filtered.length,
   wallets: dormantState.filtered,
 }, null, 2);
@@ -218,8 +238,10 @@ const dormantDownload = (filename, text, type) => {
 };
 
 const dormantReset = () => {
-  document.getElementById('dormantYearsInput').value = '5';
-  document.getElementById('dormantMinBtcInput').value = '10';
+  // Empty thresholds = no floor: the whole pool shows until the user fills
+  // the boxes in himself.
+  document.getElementById('dormantYearsInput').value = '';
+  document.getElementById('dormantMinBtcInput').value = '';
   document.getElementById('dormantQuery').value = '';
   document.getElementById('dormantSort').value = 'balance';
   dormantSetCategory('all');
@@ -238,7 +260,10 @@ const initDormant = async () => {
     return;
   }
   const snap = dormantState.snapshot;
-  infoEl.textContent = `Snapshot generated ${snap.generatedAt} - ${snap.count} dormant wallets shipped (${snap.totalPool} in the compiled pool). Balances and dates are from that snapshot, not live.`;
+  const priceInfo = Number.isFinite(snap.priceUsd) && snap.priceUsd > 0
+    ? ` BTC/USD price captured when this snapshot was built: ${dormantFormatUsd(snap.priceUsd)}${snap.priceAt ? ` on ${String(snap.priceAt).slice(0, 10)}` : ''}${snap.priceSource ? ` (via ${String(snap.priceSource)})` : ''} - USD amounts use that price, not a live rate.`
+    : ' USD amounts unavailable: no BTC/USD price was captured when this snapshot was built.';
+  infoEl.textContent = `Snapshot generated ${snap.generatedAt} - ${snap.count} dormant wallets shipped (${snap.totalPool} in the compiled pool). Balances and dates are from that snapshot, not live.${priceInfo}`;
   dormantRenderChips();
   dormantApply();
 };

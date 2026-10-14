@@ -2653,21 +2653,21 @@ gpg --verify signature.txt</code></pre>
         <div class="explainer__body">
           <p><strong>What's in here.</strong> A compiled snapshot of dormant Bitcoin addresses: outputs from early-mining blocks that have never moved in years, plus wallets with public attribution. Dormant means the <em>coins last moved</em> that long ago: spending resets the clock, receiving funds (including dust campaigns) never does. Balances and dates are from the snapshot (not live) - use the <a href="#/walletcheck">Wallet Checker</a> for live balances.</p>
           <p><strong>Tags with receipts.</strong> Labels like <code>OFAC SDN: Lazarus Group</code>, <code>MtGox hack (2011 theft)</code> or <code>Silk Road darknet market</code> come from public sources - click any row to see each tag's source page and the date it was retrieved. Sources disagree and labels can be wrong: check the citation before treating any label as fact. <em>Corroborated</em> = two or more independent sources, <em>single-source</em> = one, <em>unverified</em> = asserted without a citation.</p>
-          <p><strong>Adjust the thresholds.</strong> "Dormant for at least X years" and "Minimum balance" re-filter the whole pool instantly in your browser - the defaults are just a starting point.</p>
+          <p><strong>Adjust the thresholds.</strong> "Dormant for at least X years" and "Minimum balance" re-filter the whole pool instantly in your browser - both start empty so everything is shown; type values in to narrow the view.</p>
           <p class="recover-hint">Browsing is private: the snapshot is loaded from this site only and no addresses you view are sent anywhere. Opening an address on a block explorer is an online action - the explorer sees that visit. Exports are generated locally in your browser.</p>
         </div>
         <button type="button" class="explainer__dismiss" data-dismiss-explainer="dormant" title="Dismiss" aria-label="Dismiss">&times;</button>
       </div>
 
       <div class="panel">
-        <div class="warning"><strong>Snapshot data.</strong> Balances, dates and tags are from the snapshot this app shipped with (shown below), not live chain data. Tag labels are claims by third parties with the citation shown - they can be wrong. Clicking an address opens a block explorer in a new tab, which does go online.</div>
+        <div class="warning"><strong>Snapshot data.</strong> Balances, dates and tags are from the snapshot this app shipped with (shown below), not live chain data. USD amounts use the BTC/USD price captured when the snapshot was built - never a live rate. Tag labels are claims by third parties with the citation shown - they can be wrong. Clicking an address opens a block explorer in a new tab, which does go online.</div>
         <p class="recover-hint" id="dormantSnapshotInfo">Loading snapshot&hellip;</p>
 
         <div class="dormant-filters">
           <label for="dormantYearsInput">Dormant for at least (years)</label>
-          <input type="number" id="dormantYearsInput" min="5" max="17" step="0.5" value="5" oninput="dormantApply()">
+          <input type="number" id="dormantYearsInput" min="5" max="17" step="0.5" placeholder="any" oninput="dormantApply()">
           <label for="dormantMinBtcInput">Minimum balance (BTC)</label>
-          <input type="number" id="dormantMinBtcInput" min="0" step="0.1" value="10" oninput="dormantApply()">
+          <input type="number" id="dormantMinBtcInput" min="0" step="0.1" placeholder="any" oninput="dormantApply()">
           <label for="dormantQuery">Search (address or tag)</label>
           <input type="search" id="dormantQuery" placeholder="1Feex… or mtgox" autocomplete="off" spellcheck="false" oninput="dormantApply()">
           <label for="dormantSort">Sort by</label>
@@ -2685,7 +2685,7 @@ gpg --verify signature.txt</code></pre>
         <div class="dormant-table-wrap">
           <table class="dormant-table" id="dormantTable">
             <thead>
-              <tr><th>Address</th><th>Balance (BTC)</th><th>Dormant</th><th>First seen</th><th>Coins last moved</th><th>Tags</th></tr>
+              <tr><th>Address</th><th>Balance (BTC)</th><th>Balance (USD)</th><th>Dormant</th><th>First seen</th><th>Coins last moved</th><th>Tags</th></tr>
             </thead>
             <tbody id="dormantRows"></tbody>
           </table>

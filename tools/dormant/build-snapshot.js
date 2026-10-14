@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config.json');
 const { mergeTags, isDormant } = require('./lib/tags');
+const { fetchPriceUsd } = require('./lib/price');
 
 const OUT_DIR = path.join(__dirname, 'out');
 const ROOT = path.join(__dirname, '..', '..');
@@ -18,7 +19,7 @@ const load = (file, fallback) => {
   return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : fallback;
 };
 
-const main = () => {
+const main = async () => {
   const now = Date.now();
   const scan = load('candidates-scan.json', []);
   const verified = load('verified.json', {});
@@ -96,12 +97,37 @@ const main = () => {
   wallets.sort((a, b) => b.balanceSats - a.balanceSats);
   const kept = wallets.slice(0, config.maxWallets);
 
+  // USD at snapshot-build time: fetched HERE (the build host), never in the
+  // browser - the card's offline-first promise holds and no viewer's IP or
+  // browsing reaches a price API. On fetch failure the previous snapshot's
+  // captured price is reused with its original capture date (stale but
+  // honest); USD degrades to "unavailable" in the UI only if neither exists.
+  let price = await fetchPriceUsd({ nowMs: now });
+  if (!price) {
+    const prevFile = path.join(ROOT, 'data', 'dormant-wallets.json');
+    try {
+      const prev = JSON.parse(fs.readFileSync(prevFile, 'utf8'));
+      if (prev && typeof prev.priceUsd === 'number' && prev.priceUsd > 0) {
+        price = {
+          priceUsd: prev.priceUsd,
+          priceAt: prev.priceAt || null,
+          source: (prev.priceSource || 'previous snapshot') + ' (reused)',
+        };
+      }
+    } catch (err) {
+      // no previous snapshot to fall back on - price stays null
+    }
+  }
+
   const snapshot = {
     schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     minDormantYears: config.minDormantYears,
     totalPool: wallets.length,
     count: kept.length,
+    priceUsd: price ? price.priceUsd : null,
+    priceAt: price ? price.priceAt : null,
+    priceSource: price ? price.source : null,
     wallets: kept,
   };
   const outFile = path.join(ROOT, 'data', 'dormant-wallets.json');
@@ -111,6 +137,8 @@ const main = () => {
   const tagged = kept.filter((w) => w.tags.some((t) => t.category !== 'early-miner'));
   const report = {
     generatedAt: snapshot.generatedAt,
+    priceUsd: snapshot.priceUsd,
+    priceAt: snapshot.priceAt,
     scanCandidates: scan.length,
     verified: Object.keys(verified).length,
     dormantPool: wallets.length,
@@ -128,4 +156,7 @@ const main = () => {
   console.error('build: report', JSON.stringify(report, null, 2));
 };
 
-main();
+main().catch((err) => {
+  console.error('build: failed', err);
+  process.exit(1);
+});

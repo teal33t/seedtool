@@ -23,6 +23,9 @@ const SNAPSHOT = {
   minDormantYears: 5,
   totalPool: 5,
   count: 5,
+  priceUsd: 100000,
+  priceAt: '2026-10-10T00:00:00.000Z',
+  priceSource: 'test-feed',
   wallets: [
     {
       address: '1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF',
@@ -243,14 +246,72 @@ test('dormant: exports carry the filtered set with tags and citations', async ()
   const tool = await openTool();
   await tool.run('initDormant()');
   const csv = tool.run('dormantExportCsv()');
-  assert.match(csv, /"address","balanceBtc","dormantYears","firstSeen","lastActive","txCount","tags","txid","minedSats"/);
+  assert.match(csv, /"address","balanceBtc","balanceUsd","dormantYears","firstSeen","lastActive","txCount","tags","txid","minedSats"/);
+  assert.match(csv, /"800000000\.00"/); // 8000 BTC at the fixture's snapshot price
   assert.match(csv, /MtGox hack \(2011 theft\) \(hack-theft\/corroborated\)/);
   assert.match(csv, /e1cf3476234d8446653ad52a8939ed792003eefdcd0e897319ab9d2cb4c14c8c/); // mined row carries its coinbase txid
   assert.ok(csv.trim().split('\n').length >= 4); // header + 3 matches
   const json = JSON.parse(tool.run('dormantExportJson()'));
   assert.strictEqual(json.count, 3);
   assert.strictEqual(json.generatedAt, '2026-10-10T00:00:00.000Z');
+  assert.strictEqual(json.priceUsd, 100000);
   assert.strictEqual(json.wallets[0].balanceBtc, 8000);
+});
+
+test('dormant: empty thresholds show the whole pool until the user fills them', async () => {
+  const tool = await openTool();
+  await tool.run('initDormant()');
+  tool.run('document.getElementById("dormantYearsInput").value = ""');
+  tool.run('document.getElementById("dormantMinBtcInput").value = ""');
+  tool.run('dormantApply()');
+  const summary = tool.run('document.getElementById("dormantSummary").textContent');
+  assert.match(summary, /5 wallets match/);
+  const html = tool.run('document.getElementById("dormantRows").innerHTML');
+  assert.ok(html.includes('1TinyBalance')); // dust row joins with no minimum
+  assert.ok(html.includes('1RecentlyActive')); // recent row joins with no dormancy floor
+  // Reset restores the blank state, not the old 5y/10BTC defaults
+  tool.run('dormantReset()');
+  assert.strictEqual(tool.run('document.getElementById("dormantYearsInput").value'), '');
+  assert.strictEqual(tool.run('document.getElementById("dormantMinBtcInput").value'), '');
+  assert.match(tool.run('document.getElementById("dormantSummary").textContent'), /5 wallets match/);
+});
+
+test('dormant: USD values come from the snapshot price, never a live rate', async () => {
+  const tool = await openTool();
+  await tool.run('initDormant()');
+  tool.run('document.getElementById("dormantYearsInput").value = ""');
+  tool.run('document.getElementById("dormantMinBtcInput").value = ""');
+  tool.run('dormantApply()');
+  const html = tool.run('document.getElementById("dormantRows").innerHTML');
+  assert.ok(html.includes('$800,000,000')); // 8000 BTC at the fixture's 100k price
+  assert.ok(html.includes('$50,000')); // 0.5 BTC row formats at the same price
+  const summary = tool.run('document.getElementById("dormantSummary").textContent');
+  assert.match(summary, /\(≈ \$955,050,000\)/); // 9550.5 BTC total at the snapshot price
+  const info = tool.run('document.getElementById("dormantSnapshotInfo").textContent');
+  assert.match(info, /BTC\/USD price captured when this snapshot was built: \$100,000/);
+  assert.match(info, /via test-feed/);
+  tool.run('dormantShowDetail(0)');
+  const detail = tool.run('document.getElementById("dormantDetail").innerHTML');
+  assert.match(detail, /\$800,000,000 at snapshot price/);
+});
+
+test('dormant: snapshots without a captured price degrade gracefully', async () => {
+  const tool = await openTool();
+  tool.context.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ ...SNAPSHOT, priceUsd: null, priceAt: null, priceSource: null }),
+  });
+  await tool.run('initDormant()');
+  tool.run('document.getElementById("dormantYearsInput").value = ""');
+  tool.run('document.getElementById("dormantMinBtcInput").value = ""');
+  tool.run('dormantApply()');
+  const html = tool.run('document.getElementById("dormantRows").innerHTML');
+  assert.ok(!html.includes('$')); // no USD cells invented
+  const summary = tool.run('document.getElementById("dormantSummary").textContent');
+  assert.ok(!summary.includes('≈'));
+  const info = tool.run('document.getElementById("dormantSnapshotInfo").textContent');
+  assert.match(info, /USD amounts unavailable/);
 });
 
 test('dormant: missing snapshot degrades to an honest message', async () => {
