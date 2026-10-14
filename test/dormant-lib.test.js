@@ -3,7 +3,7 @@
 'use strict';
 
 const assert = require('assert');
-const { p2pkAddressFromPubkey, p2pkPubkeyFromScript, voutAddress, base58checkEncode, base58checkVerify, isBtcAddress, hash160 } = require('../tools/dormant/lib/address');
+const { p2pkAddressFromPubkey, p2pkPubkeyFromScript, voutAddress, base58checkEncode, base58checkVerify, bech32Verify, isBtcAddress, hash160 } = require('../tools/dormant/lib/address');
 const { parseOfacEnhanced } = require('../tools/dormant/lib/ofac');
 const { mergeTags, isDormant } = require('../tools/dormant/lib/tags');
 const { stripTags, extractAddresses, tagsFromText } = require('../tools/dormant/lib/harvest');
@@ -455,6 +455,28 @@ test('dormant: harvest extraction checksum-verifies base58 and keeps chains apar
   assert.ok(!found.has('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb'), 'bad-checksum base58 must be dropped');
   assert.strictEqual(found.get('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'), 'BTC');
   assert.strictEqual(found.get('0x742d35Cc6634C0532925a3b844Bc454e4438f44e'), 'ETH');
+});
+
+test('dormant: bech32Verify enforces the BIP173/350 checksum, not just shape', () => {
+  assert.strictEqual(bech32Verify('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'), true); // P2WPKH v0
+  assert.strictEqual(bech32Verify('bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3'), true); // P2WSH v0
+  assert.strictEqual(bech32Verify('BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4'), true); // one case only, upper
+  assert.strictEqual(bech32Verify('bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0'), true); // v1 bech32m
+  assert.strictEqual(bech32Verify('bc1sw50qgdz25j'), true); // v16, short program
+  assert.strictEqual(bech32Verify('bc1qgdjqv0av3q56jvd82tkdjpy7gd'), false); // truncated page render
+  assert.strictEqual(bech32Verify('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5'), false); // flipped char
+  assert.strictEqual(bech32Verify('bc1Qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'), false); // mixed case
+  assert.strictEqual(bech32Verify('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'), false); // testnet hrp
+  assert.strictEqual(bech32Verify(''), false);
+  assert.strictEqual(bech32Verify(null), false);
+});
+
+test('dormant: harvest extraction drops truncated bech32 renders and folds case', () => {
+  const text = 'big one BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4 truncated bc1qgdjqv0av3q56jvd82tkdjpy7gd done';
+  const found = extractAddresses(text);
+  assert.strictEqual(found.get('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'), 'BTC', 'uppercase render folded to lowercase');
+  assert.ok(!found.has('bc1qgdjqv0av3q56jvd82tkdjpy7gd'), 'fragment that keeps shape but not checksum must be dropped');
+  assert.strictEqual(found.size, 1);
 });
 
 test('dormant: harvest tagsFromText claims emit only on-page claims', () => {

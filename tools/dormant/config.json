@@ -77,6 +77,30 @@
       "category": "dormant-claim"
     },
     {
+      "url": "https://bitinfocharts.com/top-100-dormant_4y-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 dormant 4+ years addresses",
+      "label": "Dormant 4+ years, top-100 by balance (list claim)",
+      "category": "dormant-claim"
+    },
+    {
+      "url": "https://bitinfocharts.com/top-100-dormant_3y-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 dormant 3+ years addresses",
+      "label": "Dormant 3+ years, top-100 by balance (list claim)",
+      "category": "dormant-claim"
+    },
+    {
+      "url": "https://bitinfocharts.com/top-100-dormant_2y-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 dormant 2+ years addresses",
+      "label": "Dormant 2+ years, top-100 by balance (list claim)",
+      "category": "dormant-claim"
+    },
+    {
+      "url": "https://bitinfocharts.com/top-100-dormant_1y-bitcoin-addresses.html",
+      "sourceName": "BitInfoCharts: top 100 dormant 1+ years addresses",
+      "label": "Dormant 1+ years, top-100 by balance (list claim)",
+      "category": "dormant-claim"
+    },
+    {
       "url": "https://raw.githubusercontent.com/Sikkra/satoshi-stash-cluster-e/main/satoshi_stash_cluster_e_address_list.csv",
       "sourceName": "Sikkra/satoshi-stash-cluster-e: derived Patoshi cluster-E addresses (GitHub)",
       "label": "Satoshi-era Patoshi miner output (list claim)",
@@ -92,8 +116,7 @@
       "url": "https://raw.githubusercontent.com/amutek/Lost-Bitcoin/main/lost.txt",
       "sourceName": "amutek/Lost-Bitcoin: zombie address list (GitHub)",
       "label": "Zombie/lost-coin candidate (list claim)",
-      "category": "lost-coins",
-      "maxRows": 2500
+      "category": "lost-coins"
     }
   ]
 }

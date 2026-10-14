@@ -1,11 +1,12 @@
 // Page-harvest helpers shared by the tag extractors. Provenance-first: an
-// address only becomes a tag when its checksum (base58) or strict shape
-// (bech32/ETH) passes, and every tag row carries its source + retrieval date.
+// address only becomes a tag when its checksum (base58check or bech32)
+// passes - ETH is shape-only - and every tag row carries its source +
+// retrieval date.
 // Third-party lists are labeled claims with citations - verify.js
 // independently establishes balances and dormancy for every address.
 'use strict';
 
-const { base58checkVerify } = require('./address');
+const { base58checkVerify, bech32Verify } = require('./address');
 
 const BTC_BECH32_RE = /\bbc1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{20,87}\b/gi;
 const BTC_BASE58_RE = /\b[13][a-km-zA-HJ-NP-Z1-9]{25,34}\b/g;
@@ -19,7 +20,10 @@ const stripTags = (html) => html
 
 const extractAddresses = (text) => {
   const found = new Map();
-  for (const m of text.matchAll(BTC_BECH32_RE)) found.set(m[0], 'BTC');
+  for (const m of text.matchAll(BTC_BECH32_RE)) {
+    // lowercase so case-variant renders of one address never split into two
+    if (bech32Verify(m[0])) found.set(m[0].toLowerCase(), 'BTC');
+  }
   for (const m of text.matchAll(BTC_BASE58_RE)) {
     if (base58checkVerify(m[0])) found.set(m[0], 'BTC');
   }
