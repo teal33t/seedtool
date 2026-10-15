@@ -19,6 +19,7 @@ const dormantState = {
   filtered: [],
   page: 0,
   category: 'all',
+  openAddr: null,
 };
 
 // Years since the coins last moved: only spends reset the clock, receiving
@@ -91,31 +92,39 @@ const dormantTagChip = (t) => {
   return `<span class="dormant-tag" data-category="${escapeHtml(t.category || 'unknown')}" title="${title}">${escapeHtml(short)}</span>`;
 };
 
-const dormantRowHtml = (w, idx) => {
+const dormantRowHtml = (w, idx, open) => {
   const addr = escapeHtml(w.address);
   const years = dormantYears(w).toFixed(1);
   const first = w.firstSeen ? escapeHtml(w.firstSeen.slice(0, 10)) : '?';
   const last = w.lastActive ? escapeHtml(w.lastActive.slice(0, 10)) : '?';
   const tags = (w.tags || []).map(dormantTagChip).join(' ');
-  return `<tr data-idx="${idx}" tabindex="0" onclick="dormantShowDetail(+this.dataset.idx)"><td><code><a href="https://blockstream.info/address/${addr}" target="_blank" rel="noopener noreferrer">${addr}</a></code></td><td>${(w.balanceBtc || 0).toFixed(8)}</td><td>${escapeHtml(dormantFormatUsd(dormantUsd(w)))}</td><td>${years}y</td><td>${first}</td><td>${last}</td><td>${tags}</td></tr>`;
+  return `<tr class="dormant-row${open ? ' open' : ''}" data-idx="${idx}" tabindex="0" aria-expanded="${open ? 'true' : 'false'}" onclick="dormantShowDetail(+this.dataset.idx)"><td><span class="dormant-chev" aria-hidden="true">▸</span><code><a href="https://blockstream.info/address/${addr}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${addr}</a></code></td><td>${(w.balanceBtc || 0).toFixed(8)}</td><td>${escapeHtml(dormantFormatUsd(dormantUsd(w)))}</td><td>${years}y</td><td>${first}</td><td>${last}</td><td>${tags}</td></tr>`;
 };
 
 const dormantRender = () => {
   const st = dormantState;
   const rowsEl = document.getElementById('dormantRows');
   const summaryEl = document.getElementById('dormantSummary');
-  const pageEl = document.getElementById('dormantPageLabel');
   const totalPages = Math.max(1, Math.ceil(st.filtered.length / DORMANT_PAGE_SIZE));
   if (st.page >= totalPages) st.page = totalPages - 1;
   if (st.page < 0) st.page = 0;
   const start = st.page * DORMANT_PAGE_SIZE;
   const pageRows = st.filtered.slice(start, start + DORMANT_PAGE_SIZE);
-  rowsEl.innerHTML = pageRows.map((w) => dormantRowHtml(w, st.filtered.indexOf(w))).join('');
+  rowsEl.innerHTML = pageRows.map((w) => {
+    const open = st.openAddr === w.address;
+    return dormantRowHtml(w, st.filtered.indexOf(w), open) + (open ? dormantAccordionHtml(w) : '');
+  }).join('');
   const totalBtc = st.filtered.reduce((sum, w) => sum + (w.balanceBtc || 0), 0);
   const price = st.snapshot ? st.snapshot.priceUsd : null;
   const usdPart = Number.isFinite(price) && price > 0 ? ` (≈ ${dormantFormatUsd(totalBtc * price)})` : '';
   summaryEl.textContent = `${st.filtered.length} wallet${st.filtered.length === 1 ? '' : 's'} match - ${totalBtc.toFixed(2)} BTC${usdPart} on this page's selection (page ${st.page + 1} of ${totalPages})`;
-  pageEl.textContent = `${st.filtered.length} matches`;
+  // The same pager renders above and below the table: 50-row pages mean one
+  // of them is always off-screen.
+  const pagerHtml = dormantPagerHtml(st.page, totalPages);
+  for (const id of ['dormantPagerTop', 'dormantPagerBottom']) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = pagerHtml;
+  }
 };
 
 const dormantApply = () => {
@@ -130,7 +139,8 @@ const dormantApply = () => {
   };
   st.filtered = dormantFilterSort(st.snapshot.wallets, opts);
   st.page = 0;
-  document.getElementById('dormantDetail').hidden = true;
+  // openAddr survives re-filtering: it is keyed by address, so the same wallet
+  // stays expanded wherever it lands (or silently collapses if filtered out).
   dormantRender();
 };
 
@@ -172,13 +182,10 @@ const dormantMinedHtml = (w) => {
     + `<p class="recover-hint">This address is a pay-to-pubkey label for a mining output; some explorers show the coins under the transaction, not the address.</p>`;
 };
 
-const dormantShowDetail = (idx) => {
-  const w = dormantState.filtered[idx];
-  const el = document.getElementById('dormantDetail');
-  if (!w) {
-    el.hidden = true;
-    return;
-  }
+// Wallet detail for the row accordion: provenance first - which sources assert
+// each tag and when they were retrieved - plus the honesty markers for
+// walk-bounded dates. Pure builder shared by the accordion row and the tests.
+const dormantDetailHtml = (w) => {
   const tags = (w.tags || []).map((t) => {
     const sources = (t.sources || []).map((s) => {
       const retrieved = s.retrievedAt ? ` - retrieved ${escapeHtml(String(s.retrievedAt).slice(0, 10))}` : '';
@@ -186,7 +193,7 @@ const dormantShowDetail = (idx) => {
     }).join('');
     return `<li><strong>${escapeHtml(t.label)}</strong> - ${escapeHtml(t.category || 'unknown')} - <em>${escapeHtml(t.confidence || 'unverified')}</em><ul>${sources}</ul></li>`;
   }).join('');
-  el.innerHTML = `
+  return `
     <h3>${escapeHtml(w.address)}</h3>
     <p>${(w.balanceBtc || 0).toFixed(8)} BTC${dormantUsd(w) == null ? '' : ` (≈ ${escapeHtml(dormantFormatUsd(dormantUsd(w)))} at snapshot price)`} - dormant ${dormantYears(w).toFixed(1)} years (coins last moved ${escapeHtml((w.lastActive || 'unknown').slice(0, 10))}) - ${w.txCount || 0} tx${w.txCount === 1 ? '' : 's'}${w.blockHeight != null ? ` - first seen in block ${w.blockHeight}` : ''}</p>
     <p><a href="https://blockstream.info/address/${escapeHtml(w.address)}" target="_blank" rel="noopener noreferrer">Open on block explorer</a></p>
@@ -195,14 +202,57 @@ const dormantShowDetail = (idx) => {
     ${w.spendUndated ? '<p class="recover-hint">Last-moved date is an upper bound - this wallet has spends our history walk could not date, so the real last move is older (it has been dormant at least this long).</p>' : ''}
     <p class="recover-hint">Tags are third-party claims with their sources listed - check the citation before treating any label as fact.</p>
     <ul class="dormant-sources">${tags || '<li>no tags</li>'}</ul>`;
-  el.hidden = false;
+};
+
+// The open row's detail, emitted as a full-width row directly beneath it.
+const dormantAccordionHtml = (w) =>
+  `<tr class="dormant-acc"><td colspan="7"><div class="dormant-detail dormant-acc-body">${dormantDetailHtml(w)}</div></td></tr>`;
+
+// One row open at a time; clicking the open row closes it. Keyed by address,
+// not row index, so re-sorting cannot put the wrong wallet under an open row.
+const dormantShowDetail = (idx) => {
+  const w = dormantState.filtered[idx];
+  if (!w) return;
+  dormantState.openAddr = dormantState.openAddr === w.address ? null : w.address;
+  dormantRender();
+};
+
+// Windowed page-number list: first and last always, the current page with its
+// neighbors, and '…' where numbers are skipped. The window widens near the
+// start (and symmetrically at the end) so early pages never collapse to "1 …".
+const dormantPageNumbers = (page, total) => {
+  const want = new Set([0, total - 1, page - 1, page, page + 1]);
+  if (page <= 2) [1, 2, 3].forEach((n) => want.add(n));
+  if (page >= total - 3) [total - 2, total - 3, total - 4].forEach((n) => want.add(n));
+  const out = [];
+  let prev = null;
+  for (const n of [...want].filter((x) => x >= 0 && x < total).sort((a, b) => a - b)) {
+    if (prev != null && n - prev > 1) out.push('…');
+    out.push(n);
+    prev = n;
+  }
+  return out;
+};
+
+const dormantPagerHtml = (page, totalPages) => {
+  const nums = dormantPageNumbers(page, totalPages).map((n) => (n === '…'
+    ? '<span class="dormant-page-gap">…</span>'
+    : `<button type="button" class="dormant-page${n === page ? ' active' : ''}" onclick="dormantGoPage(${n})"${n === page ? ' aria-current="page"' : ''}>${n + 1}</button>`)).join('');
+  return `<span class="dormant-page-info">Page ${page + 1} of ${totalPages}</span>`
+    + `<button type="button" class="dormant-page" onclick="dormantPage(-1)"${page === 0 ? ' disabled' : ''}>← Prev</button>`
+    + nums
+    + `<button type="button" class="dormant-page" onclick="dormantPage(1)"${page >= totalPages - 1 ? ' disabled' : ''}>Next →</button>`;
+};
+
+const dormantGoPage = (n) => {
+  const st = dormantState;
+  const totalPages = Math.max(1, Math.ceil(st.filtered.length / DORMANT_PAGE_SIZE));
+  st.page = Math.min(totalPages - 1, Math.max(0, n));
+  dormantRender();
 };
 
 const dormantPage = (delta) => {
-  const st = dormantState;
-  const totalPages = Math.max(1, Math.ceil(st.filtered.length / DORMANT_PAGE_SIZE));
-  st.page = Math.min(totalPages - 1, Math.max(0, st.page + delta));
-  dormantRender();
+  dormantGoPage(dormantState.page + delta);
 };
 
 // Export content builders (pure): the click handlers wrap these in a download.

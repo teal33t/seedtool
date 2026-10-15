@@ -2682,6 +2682,7 @@ gpg --verify signature.txt</code></pre>
         <div class="dormant-cats" id="dormantCats" role="group" aria-label="Filter by tag category"></div>
         <p class="recover-hint" id="dormantSummary" aria-live="polite"></p>
         <div class="dormant-rate" id="dormantRateNote" hidden></div>
+        <div class="dormant-pager" id="dormantPagerTop" aria-label="Wallet list pages"></div>
 
         <div class="dormant-table-wrap">
           <table class="dormant-table" id="dormantTable">
@@ -2691,14 +2692,11 @@ gpg --verify signature.txt</code></pre>
             <tbody id="dormantRows"></tbody>
           </table>
         </div>
+        <div class="dormant-pager" id="dormantPagerBottom" aria-label="Wallet list pages"></div>
         <div class="ms-actions">
-          <button type="button" class="btn" id="dormantPrevBtn" onclick="dormantPage(-1)">← Previous</button>
-          <span id="dormantPageLabel" class="recover-hint"></span>
-          <button type="button" class="btn" id="dormantNextBtn" onclick="dormantPage(1)">Next →</button>
           <button type="button" class="btn" id="dormantExportCsvBtn" onclick="dormantDownload('dormant-wallets.csv', dormantExportCsv(), 'text/csv')">Export CSV</button>
           <button type="button" class="btn" id="dormantExportJsonBtn" onclick="dormantDownload('dormant-wallets.json', dormantExportJson(), 'application/json')">Export JSON</button>
         </div>
-        <div id="dormantDetail" class="dormant-detail" hidden></div>
       </div>
     </section>
 

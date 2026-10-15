@@ -1,7 +1,7 @@
 /*
  * Tests for the Dormant Wallets Research UI (dormant.js): threshold
  * re-filtering (dormant-years + min-balance), category and text filters,
- * sorting, pagination-safe rendering, tag chips, detail panel with source
+ * sorting, numbered pagination, tag chips, row accordion with source
  * citations, and the export builders. The snapshot comes from a stubbed
  * same-origin fetch - no network is touched.
  */
@@ -203,7 +203,7 @@ test('dormant: detail panel lists every tag with its source citation', async () 
   const tool = await openTool();
   await tool.run('initDormant()');
   tool.run('dormantShowDetail(0)');
-  const html = tool.run('document.getElementById("dormantDetail").innerHTML');
+  const html = tool.run('document.getElementById("dormantRows").innerHTML');
   assert.match(html, /MtGox hack \(2011 theft\)/);
   assert.match(html, /corroborated/);
   assert.match(html, /href="https:\/\/example\.test\/wizsec"/);
@@ -217,7 +217,7 @@ test('dormant: detail panel explains mined pay-to-pubkey outputs', async () => {
   const tool = await openTool();
   await tool.run('initDormant()');
   tool.run('dormantShowDetail(2)'); // the early-miner row after the default sort
-  const html = tool.run('document.getElementById("dormantDetail").innerHTML');
+  const html = tool.run('document.getElementById("dormantRows").innerHTML');
   assert.match(html, /Mined 50\.00000000 BTC/);
   assert.match(html, /in block 321/);
   assert.match(html, /coins unspent since 2009-02-01/);
@@ -230,15 +230,15 @@ test('dormant: detail panel discloses upper-bound first-seen and undated spends'
   const tool = await openTool();
   await tool.run('initDormant()');
   tool.run('dormantShowDetail(0)'); // the undated-spend row
-  let html = tool.run('document.getElementById("dormantDetail").innerHTML');
+  let html = tool.run('document.getElementById("dormantRows").innerHTML');
   assert.match(html, /Last-moved date is an upper bound/);
   assert.ok(!html.includes('First-seen date is an upper bound'));
   tool.run('dormantShowDetail(1)'); // the inexact first-seen row
-  html = tool.run('document.getElementById("dormantDetail").innerHTML');
+  html = tool.run('document.getElementById("dormantRows").innerHTML');
   assert.match(html, /First-seen date is an upper bound/);
   assert.ok(!html.includes('Last-moved date is an upper bound'));
   tool.run('dormantShowDetail(2)'); // the exact early-miner row shows neither
-  html = tool.run('document.getElementById("dormantDetail").innerHTML');
+  html = tool.run('document.getElementById("dormantRows").innerHTML');
   assert.ok(!html.includes('date is an upper bound'));
 });
 
@@ -294,7 +294,7 @@ test('dormant: USD values come from the snapshot price, never a live rate', asyn
   assert.match(rate, /Not a live rate/);
   assert.strictEqual(tool.run('document.getElementById("dormantRateNote").hidden'), false);
   tool.run('dormantShowDetail(0)');
-  const detail = tool.run('document.getElementById("dormantDetail").innerHTML');
+  const detail = tool.run('document.getElementById("dormantRows").innerHTML');
   assert.match(detail, /\$800,000,000 at snapshot price/);
 });
 
@@ -326,6 +326,61 @@ test('dormant: missing snapshot degrades to an honest message', async () => {
   await vm.runInContext('initDormant()', tool.context);
   const info = vm.runInContext('document.getElementById("dormantSnapshotInfo").textContent', tool.context);
   assert.match(info, /could not be loaded/);
+});
+
+test('dormant: page-number window shows neighbors, edges and gaps', async () => {
+  const tool = await openTool();
+  const nums = (page, total) => tool.run(`JSON.stringify(dormantPageNumbers(${page}, ${total}))`);
+  assert.strictEqual(nums(0, 88), '[0,1,2,3,"…",87]');
+  assert.strictEqual(nums(40, 88), '[0,"…",39,40,41,"…",87]');
+  assert.strictEqual(nums(86, 88), '[0,"…",84,85,86,87]');
+  assert.strictEqual(nums(0, 1), '[0]');
+  assert.strictEqual(nums(0, 4), '[0,1,2,3]'); // short lists never gap
+  assert.strictEqual(nums(3, 4), '[0,1,2,3]');
+});
+
+test('dormant: numbered pagination jumps pages and clamps at the edges', async () => {
+  const tool = await openTool();
+  await tool.run('initDormant()');
+  tool.run('dormantState.filtered = new Array(120).fill(0).map((_, i) => ({ address: "1Fake" + i, balanceBtc: 1, tags: [] }))');
+  tool.run('dormantGoPage(2)');
+  const pager = tool.run('document.getElementById("dormantPagerTop").innerHTML');
+  assert.match(pager, /Page 3 of 3/);
+  assert.match(pager, /class="dormant-page active" onclick="dormantGoPage\(2\)"/); // page 3 button is the current one
+  assert.match(pager, /aria-current="page"/);
+  const rows = tool.run('document.getElementById("dormantRows").innerHTML');
+  assert.ok(rows.includes('1Fake100')); // page 3 holds rows 100..119
+  assert.ok(rows.includes('1Fake119'));
+  assert.ok(!rows.includes('>1Fake0<'));
+  tool.run('dormantGoPage(99)'); // past the end clamps to the last page
+  assert.match(tool.run('document.getElementById("dormantPagerTop").innerHTML'), /Page 3 of 3/);
+  tool.run('dormantGoPage(-5)'); // before the start clamps to the first page
+  assert.match(tool.run('document.getElementById("dormantPagerTop").innerHTML'), /Page 1 of 3/);
+});
+
+test('dormant: row accordion opens below its row and closes on second click', async () => {
+  const tool = await openTool();
+  await tool.run('initDormant()');
+  tool.run('dormantShowDetail(0)');
+  let html = tool.run('document.getElementById("dormantRows").innerHTML');
+  const openAt = html.indexOf('<tr class="dormant-acc">');
+  assert.ok(openAt > 0, 'accordion row emitted');
+  assert.ok(html.indexOf('data-idx="0"') < openAt, 'accordion sits below its own wallet row');
+  assert.match(html, /dormant-row open/);
+  assert.match(html, /aria-expanded="true"/);
+  assert.match(html, /\$800,000,000 at snapshot price/);
+  // clicking another row moves the accordion - one row open at a time
+  tool.run('dormantShowDetail(1)');
+  html = tool.run('document.getElementById("dormantRows").innerHTML');
+  assert.strictEqual((html.match(/<tr class="dormant-acc">/g) || []).length, 1);
+  assert.ok(html.indexOf('data-idx="1"') < html.indexOf('<tr class="dormant-acc">'));
+  assert.match(html, /First-seen date is an upper bound/); // the Lazarus row's detail
+  assert.ok(!html.includes('$800,000,000 at snapshot price'));
+  // clicking the open row again closes it
+  tool.run('dormantShowDetail(1)');
+  html = tool.run('document.getElementById("dormantRows").innerHTML');
+  assert.ok(!html.includes('dormant-acc'));
+  assert.match(html, /aria-expanded="false"/);
 });
 
 let failures = 0;
