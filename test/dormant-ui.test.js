@@ -383,6 +383,44 @@ test('dormant: row accordion opens below its row and closes on second click', as
   assert.match(html, /aria-expanded="false"/);
 });
 
+test('dormant: sort direction flips the amount order, defaults preserved', async () => {
+  const tool = await openTool();
+  const filter = tool.run('dormantFilterSort');
+  const base = { minYears: 5, minBtc: 0, query: '', category: 'all', sort: 'balance' };
+  const desc = filter(SNAPSHOT.wallets, { ...base, dir: 'desc' });
+  assert.deepStrictEqual(desc.map((w) => w.balanceBtc), [8000, 500, 50, 0.5]);
+  const asc = filter(SNAPSHOT.wallets, { ...base, dir: 'asc' });
+  assert.deepStrictEqual(asc.map((w) => w.balanceBtc), [0.5, 50, 500, 8000]);
+  // no dir passed keeps the original fixed orders
+  assert.deepStrictEqual(filter(SNAPSHOT.wallets, base).map((w) => w.balanceBtc), [8000, 500, 50, 0.5]);
+  const byLast = filter(SNAPSHOT.wallets, { ...base, sort: 'last' });
+  assert.strictEqual(byLast[0].address, '1EarlyMinerXXXXXXXXXXXXXXXXXXXXXX'); // oldest first
+  const wide = { ...base, minYears: 0 };
+  const byLastDesc = filter(SNAPSHOT.wallets, { ...wide, sort: 'last', dir: 'desc' });
+  assert.strictEqual(byLastDesc[0].address, '1RecentlyActiveXXXXXXXXXXXXXXXXXX'); // newest first
+  const byYearsAsc = filter(SNAPSHOT.wallets, { ...wide, sort: 'years', dir: 'asc' });
+  assert.strictEqual(byYearsAsc[0].address, '1RecentlyActiveXXXXXXXXXXXXXXXXXX'); // shortest dormant first
+});
+
+test('dormant: direction toggle flips the rendered order and its label', async () => {
+  const tool = await openTool();
+  await tool.run('initDormant()');
+  tool.run('document.getElementById("dormantMinBtcInput").value = ""');
+  tool.run('dormantApply()'); // 4 matches, biggest first by default
+  let html = tool.run('document.getElementById("dormantRows").innerHTML');
+  assert.ok(html.indexOf('1Feex') < html.indexOf('1TinyBalance'));
+  assert.match(tool.run('document.getElementById("dormantDirBtn").textContent'), /biggest first/);
+  tool.run('dormantToggleDir()'); // ascending by amount
+  html = tool.run('document.getElementById("dormantRows").innerHTML');
+  assert.ok(html.indexOf('1TinyBalance') < html.indexOf('1Feex'));
+  assert.match(tool.run('document.getElementById("dormantDirBtn").textContent'), /smallest first/);
+  tool.run('dormantToggleDir()'); // and back
+  html = tool.run('document.getElementById("dormantRows").innerHTML');
+  assert.ok(html.indexOf('1Feex') < html.indexOf('1TinyBalance'));
+  tool.run('dormantReset()'); // reset restores the default direction
+  assert.match(tool.run('document.getElementById("dormantDirBtn").textContent'), /biggest first/);
+});
+
 let failures = 0;
 (async () => {
   for (const [name, fn] of tests) {

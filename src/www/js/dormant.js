@@ -20,6 +20,7 @@ const dormantState = {
   page: 0,
   category: 'all',
   openAddr: null,
+  dir: null,
 };
 
 // Years since the coins last moved: only spends reset the clock, receiving
@@ -56,6 +57,18 @@ const dormantCategories = (wallets) => {
   return ordered;
 };
 
+// Sort direction defaults per key: balance and years read best-first, the date
+// keys read chronologically. A missing/unknown dir falls back to these.
+const dormantDefaultDir = (sort) => (sort === 'last' || sort === 'first' ? 'asc' : 'desc');
+
+// The direction button always names the real order, whatever the key.
+const dormantDirLabel = (sort, dir) => {
+  const desc = dir !== 'asc';
+  if (sort === 'years') return desc ? '↓ longest first' : '↑ shortest first';
+  if (sort === 'last' || sort === 'first') return desc ? '↓ newest first' : '↑ oldest first';
+  return desc ? '↓ biggest first' : '↑ smallest first';
+};
+
 // Pure filter + sort over the pool; the UI's thresholds are inputs here.
 // Blank/omitted thresholds mean "no floor" - everything in the pool shows.
 const dormantFilterSort = (wallets, opts) => {
@@ -75,12 +88,15 @@ const dormantFilterSort = (wallets, opts) => {
     return true;
   });
   const sort = opts.sort || 'balance';
-  out.sort((a, b) => {
-    if (sort === 'years') return dormantYears(b) - dormantYears(a);
-    if (sort === 'last') return Date.parse(a.lastActive || 0) - Date.parse(b.lastActive || 0);
-    if (sort === 'first') return Date.parse(a.firstSeen || 0) - Date.parse(b.firstSeen || 0);
-    return (b.balanceBtc || 0) - (a.balanceBtc || 0);
-  });
+  const dir = opts.dir === 'asc' || opts.dir === 'desc' ? opts.dir : dormantDefaultDir(sort);
+  const sign = dir === 'asc' ? 1 : -1;
+  const val = (w) => {
+    if (sort === 'years') return dormantYears(w);
+    if (sort === 'last') return Date.parse(w.lastActive || 0);
+    if (sort === 'first') return Date.parse(w.firstSeen || 0);
+    return (w.balanceBtc || 0);
+  };
+  out.sort((a, b) => sign * (val(a) - val(b)));
   return out;
 };
 
@@ -118,6 +134,9 @@ const dormantRender = () => {
   const price = st.snapshot ? st.snapshot.priceUsd : null;
   const usdPart = Number.isFinite(price) && price > 0 ? ` (≈ ${dormantFormatUsd(totalBtc * price)})` : '';
   summaryEl.textContent = `${st.filtered.length} wallet${st.filtered.length === 1 ? '' : 's'} match - ${totalBtc.toFixed(2)} BTC${usdPart} on this page's selection (page ${st.page + 1} of ${totalPages})`;
+  const sortKey = document.getElementById('dormantSort').value;
+  const dirBtn = document.getElementById('dormantDirBtn');
+  if (dirBtn) dirBtn.textContent = dormantDirLabel(sortKey, st.dir || dormantDefaultDir(sortKey));
   // The same pager renders above and below the table: 50-row pages mean one
   // of them is always off-screen.
   const pagerHtml = dormantPagerHtml(st.page, totalPages);
@@ -136,12 +155,21 @@ const dormantApply = () => {
     query: document.getElementById('dormantQuery').value,
     category: st.category,
     sort: document.getElementById('dormantSort').value,
+    dir: st.dir,
   };
   st.filtered = dormantFilterSort(st.snapshot.wallets, opts);
   st.page = 0;
   // openAddr survives re-filtering: it is keyed by address, so the same wallet
   // stays expanded wherever it lands (or silently collapses if filtered out).
   dormantRender();
+};
+
+// Flip the current sort's direction; the button label names the real order.
+const dormantToggleDir = () => {
+  const st = dormantState;
+  const sortKey = document.getElementById('dormantSort').value;
+  st.dir = (st.dir || dormantDefaultDir(sortKey)) === 'asc' ? 'desc' : 'asc';
+  dormantApply();
 };
 
 const dormantSetCategory = (category) => {
@@ -290,6 +318,7 @@ const dormantDownload = (filename, text, type) => {
 const dormantReset = () => {
   // Empty thresholds = no floor: the whole pool shows until the user fills
   // the boxes in himself.
+  dormantState.dir = null;
   document.getElementById('dormantYearsInput').value = '';
   document.getElementById('dormantMinBtcInput').value = '';
   document.getElementById('dormantQuery').value = '';

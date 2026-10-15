@@ -2672,11 +2672,12 @@ gpg --verify signature.txt</code></pre>
           <input type="search" id="dormantQuery" placeholder="1Feex… or mtgox" autocomplete="off" spellcheck="false" oninput="dormantApply()">
           <label for="dormantSort">Sort by</label>
           <select id="dormantSort" onchange="dormantApply()">
-            <option value="balance">Balance (biggest first)</option>
-            <option value="years">Dormant years (longest first)</option>
-            <option value="last">Last active (oldest first)</option>
-            <option value="first">First seen (oldest first)</option>
+            <option value="balance">Balance (BTC)</option>
+            <option value="years">Dormant years</option>
+            <option value="last">Last active</option>
+            <option value="first">First seen</option>
           </select>
+          <button type="button" class="btn" id="dormantDirBtn" onclick="dormantToggleDir()" title="Flip sort order">↓ biggest first</button>
           <button type="button" class="btn" id="dormantResetBtn" onclick="dormantReset()">Reset filters</button>
         </div>
         <div class="dormant-cats" id="dormantCats" role="group" aria-label="Filter by tag category"></div>
