@@ -362,7 +362,7 @@ gpg --verify signature.txt</code></pre>
       <div class="explainer" data-explainer="seed">
         <span class="explainer__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><path d="M12 22c4-3 7-7 7-12a7 7 0 1 0-14 0c0 5 3 9 7 12z"/><circle cx="12" cy="10" r="2"/></svg></span>
         <div class="explainer__body">
-          <p><strong>Four ways to load a seed:</strong> Pick a tab below. <strong>Generate</strong> makes a fresh random mnemonic, <strong>Enter words</strong> lets you type one you already have, the <strong>Word wizard</strong> walks you through it one word at a time (typed or clicked from the full 2048-word list), and <strong>From entropy</strong> takes raw entropy from dice, coins or cards. Once a seed is loaded you can add a BIP39 passphrase, and the rest of the toolkit unlocks.</p>
+          <p><strong>Four ways to load a seed:</strong> Pick a tab below. <strong>Generate</strong> makes a fresh random mnemonic, <strong>Enter words</strong> lets you type one you already have, the <strong>Word wizard</strong> puts your word boxes on top of the full 2048-word matrix so you can click the words in, and <strong>From entropy</strong> takes raw entropy from dice, coins or cards. Once a seed is loaded you can add a BIP39 passphrase, and the rest of the toolkit unlocks.</p>
           <div class="explainer__learn-row">
             <button type="button" class="explainer__learn" onclick="openInfoModal(event, 'entropy')">Learn more: Entropy</button>
             <button type="button" class="explainer__learn" onclick="openInfoModal(event, 'BIP39')">Learn more: BIP39</button>
@@ -456,21 +456,10 @@ gpg --verify signature.txt</code></pre>
         </div>
         <div id="Input_Wizard" class="tabContent">
           <p class="warning">
-            <strong>Warning!</strong> Do not try to make up your own mnemonic, you are not as random as you think! The wizard helps you ENTER an existing seed, word by word.
+            <strong>Warning!</strong> Do not try to make up your own mnemonic, you are not as random as you think! The wizard helps you ENTER an existing seed - click the words in from the matrix below, or type them.
           </p>
           <div id="seedWizard"></div>
           <p class="warning hidden" id="wizardStatus" role="status" aria-live="polite"></p>
-          <div class="wizard-modal hidden" id="wizardWordModal" onclick="wizardClosePicker()">
-            <div class="wizard-modal-panel" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-label="BIP39 English word list">
-              <div class="wizard-modal-head">
-                <strong>Pick a word</strong>
-                <input type="search" id="wizardWordFilter" placeholder="Filter words&hellip;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardRenderPicker()">
-                <button type="button" class="btn" onclick="wizardClosePicker()">Close</button>
-              </div>
-              <p class="recover-hint" id="wizardWordCount"></p>
-              <div class="wizard-word-grid" id="wizardWordGrid"></div>
-            </div>
-          </div>
         </div>
         <div id="Input_Entropy" class="tabContent">
           <div class="warning">

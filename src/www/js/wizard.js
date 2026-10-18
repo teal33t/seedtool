@@ -1,9 +1,10 @@
 /*
- * Word wizard - a step-by-step way to assemble a BIP39 seed phrase: pick the
- * phrase length, then choose each word one at a time from the 2048-word
- * English list, either by typing (with suggestions) or by clicking in the full
- * word picker. The finished phrase is handed to the canonical Enter-words
- * loader (mnemonicInputSeedLoad) so word checks, the checksum gate and the
+ * Word wizard - a whole-phrase way to assemble a BIP39 seed. The word boxes
+ * sit on top of the full 2048-word matrix, which is visible by default:
+ * clicking any cell fills the first empty box (repeats are fine - each picked
+ * cell shows the sequence numbers it filled), and every box also accepts
+ * typing. The finished phrase is handed to the canonical Enter-words loader
+ * (mnemonicInputSeedLoad) so word checks, the checksum gate and the
  * downstream load all run through exactly one code path. Nothing here goes
  * online: the word list ships with the page.
  */
@@ -13,7 +14,6 @@ const WIZARD_SIZES = [12, 15, 18, 21, 24];
 const wizardState = {
   length: 12,
   words: [],
-  step: 0, // 0 = choose length, 1..length = one word per step, length+1 = review
 };
 
 // The bundled BIP39 English word list - the same source the loader validates
@@ -29,31 +29,6 @@ const wizardValidate = (phrase) => {
   } catch (err) {
     return false;
   }
-};
-
-// Suggestions for the word box: prefix matches first, then substring matches.
-const wizardSuggestions = (text, limit = 8) => {
-  const q = String(text || '').trim().toLowerCase();
-  if (!q) return [];
-  const prefix = [];
-  const inside = [];
-  for (const w of wizardWords()) {
-    if (w.startsWith(q)) prefix.push(w);
-    else if (w.includes(q)) inside.push(w);
-  }
-  return prefix.concat(inside).slice(0, limit);
-};
-
-// A typed fragment resolves to one word when it is a whole word, or when
-// exactly one word starts with it - the BIP39 list is built so four letters
-// already identify a word uniquely. Ambiguous fragments resolve to nothing.
-const wizardResolve = (text) => {
-  const q = String(text || '').trim().toLowerCase();
-  if (!q) return null;
-  const list = wizardWords();
-  if (list.includes(q)) return q;
-  const starts = list.filter((w) => w.startsWith(q));
-  return starts.length === 1 ? starts[0] : null;
 };
 
 const wizardStatusError = (msg) => {
@@ -77,66 +52,137 @@ const wizardStatusClear = () => {
   el.classList.add('hidden');
 };
 
-const wizardGoStep = (n) => {
+// Which sequence numbers each word currently holds - a word can repeat, so a
+// cell may carry more than one number.
+const wizardUsedMap = () => {
+  const used = new Map();
+  wizardState.words.slice(0, wizardState.length).forEach((w, i) => {
+    if (!w) return;
+    if (!used.has(w)) used.set(w, []);
+    used.get(w).push(i + 1);
+  });
+  return used;
+};
+
+const wizardFilled = () => wizardState.words.slice(0, wizardState.length).filter(Boolean).length;
+
+// The live verdict under the boxes: progress, unknown words, then the honest
+// checksum answer once every box holds a real word.
+const wizardCheckRender = () => {
+  const el = document.getElementById('wizardCheck');
+  if (!el) return;
   const st = wizardState;
-  st.step = Math.min(Math.max(0, n), st.length + 1);
+  const words = st.words.slice(0, st.length).map((w) => w || '');
+  const unknown = [];
+  words.forEach((w, i) => {
+    if (w && !wizardWords().includes(w)) unknown.push(`word ${i + 1} ("${w}")`);
+  });
+  if (unknown.length) {
+    el.className = 'wizard-checksum wizard-error';
+    el.textContent = `✗ Not in the BIP39 word list: ${unknown.join(', ')} - click the right cell or fix the box.`;
+    return;
+  }
+  const filled = words.filter(Boolean).length;
+  if (filled < st.length) {
+    el.className = 'wizard-checksum';
+    el.textContent = `${filled} of ${st.length} words filled`;
+    return;
+  }
+  const ok = wizardValidate(words.join(' '));
+  el.className = `wizard-checksum ${ok ? 'wizard-ok' : 'wizard-error'}`;
+  el.textContent = ok
+    ? '✓ BIP39 checksum valid'
+    : '✗ BIP39 checksum not valid yet - a word is probably mistyped or out of order. Click a box, then the right cell.';
+};
+
+// The matrix itself: every word as a clickable cell, narrowed by the filter,
+// each picked cell tinted and carrying its sequence number(s).
+const wizardMatrixRender = () => {
+  const grid = document.getElementById('wizardMatrix');
+  if (!grid) return;
+  const list = wizardWords();
+  const filterEl = document.getElementById('wizardWordFilter');
+  const q = filterEl ? String(filterEl.value || '').trim().toLowerCase() : '';
+  const matches = q ? list.filter((w) => w.includes(q)) : list;
+  const countEl = document.getElementById('wizardWordCount');
+  if (countEl) {
+    countEl.textContent = q
+      ? `${matches.length} of ${list.length} words contain "${q}" - click one to put it in the next empty box`
+      : `All ${list.length} words - click one to put it in the next empty box`;
+  }
+  const used = wizardUsedMap();
+  grid.innerHTML = matches
+    .map((w) => {
+      const seqs = used.get(w) || [];
+      const badges = seqs.map((n) => `<span class="wiz-cell-n">${n}</span>`).join('');
+      return `<button type="button" class="wiz-cell${seqs.length ? ' used' : ''}" title="${seqs.length ? `picked as word ${seqs.join(', ')}` : w}" onclick="wizardMatrixPick('${w}')">${w}${badges}</button>`;
+    })
+    .join('');
+};
+
+// Click a cell: the word goes into the first empty box - never overwrites.
+const wizardMatrixPick = (word) => {
+  const st = wizardState;
+  const w = String(word || '').trim().toLowerCase();
+  if (!wizardWords().includes(w)) return false;
+  const words = st.words.slice(0, st.length).map((x) => x || '');
+  const i = words.findIndex((x) => !x);
+  if (i === -1) {
+    wizardStatusError(`All ${st.length} boxes are filled - clear one with its × (or use Reset all) before changing the phrase.`);
+    return false;
+  }
+  st.words[i] = w;
+  const input = document.getElementById(`wizardWordBox-${i + 1}`);
+  if (input) input.value = w;
+  wizardStatusClear();
+  wizardMatrixRender();
+  wizardCheckRender();
+  wizardFocusEmpty();
+  return true;
+};
+
+// Typing in a box keeps the matrix badges and the verdict in step.
+const wizardTypeWord = (i, value) => {
+  const st = wizardState;
+  const idx = parseInt(i, 10);
+  if (!(idx >= 0 && idx < st.length)) return;
+  st.words[idx] = String(value || '').trim().toLowerCase();
+  wizardStatusClear();
+  wizardMatrixRender();
+  wizardCheckRender();
+};
+
+// The small x by a box: forget just that word, keep the rest.
+const wizardClearWord = (i) => {
+  const st = wizardState;
+  const idx = parseInt(i, 10);
+  if (!(idx >= 0 && idx < st.length)) return;
+  st.words[idx] = '';
+  const input = document.getElementById(`wizardWordBox-${idx + 1}`);
+  if (input) input.value = '';
+  wizardStatusClear();
+  wizardMatrixRender();
+  wizardCheckRender();
+};
+
+const wizardFocusEmpty = () => {
+  const st = wizardState;
+  const words = st.words.slice(0, st.length).map((x) => x || '');
+  const i = words.findIndex((x) => !x);
+  const input = i === -1 ? null : document.getElementById(`wizardWordBox-${i + 1}`);
+  if (input && input.focus) input.focus();
+};
+
+const wizardSetLength = (n) => {
+  const st = wizardState;
+  st.length = Math.max(1, parseInt(n, 10) || 12);
+  st.words = Array.from({ length: st.length }, (_, i) => st.words[i] || '');
   wizardStatusClear();
   wizardRender();
 };
 
-// Step 1 of the wizard: how long the phrase is. Jumps straight to the first
-// word still missing (or the review when every word is already picked).
-const wizardSetLength = (n) => {
-  const st = wizardState;
-  st.length = Math.max(1, parseInt(n, 10) || 12);
-  st.words = st.words.slice(0, st.length);
-  let step = st.length + 1;
-  for (let i = 0; i < st.length; i += 1) {
-    if (!st.words[i]) {
-      step = i + 1;
-      break;
-    }
-  }
-  wizardGoStep(step);
-};
-
-// Choose the word for the current step and move on: one click (or Enter) per
-// word is the whole flow.
-const wizardPickWord = (word) => {
-  const st = wizardState;
-  const w = String(word || '').trim().toLowerCase();
-  if (!wizardWords().includes(w)) return false;
-  if (st.step < 1 || st.step > st.length) return false;
-  st.words[st.step - 1] = w;
-  wizardGoStep(st.step + 1);
-  return true;
-};
-
-// The word box: take whatever is typed when it resolves to exactly one word.
-const wizardCommitInput = () => {
-  const input = document.getElementById('wizardWordInput');
-  const typed = input ? String(input.value || '').trim() : '';
-  const resolved = wizardResolve(typed);
-  if (typed && !resolved) {
-    wizardStatusError(`"${typed}" is not one BIP39 word. Keep typing until one word matches, or browse the full list.`);
-    return;
-  }
-  if (resolved) {
-    wizardPickWord(resolved);
-    return;
-  }
-  if (wizardState.words[wizardState.step - 1]) {
-    wizardGoStep(wizardState.step + 1);
-    return;
-  }
-  wizardStatusError('Pick a word first - type part of it, or browse the full list.');
-};
-
-const wizardBack = () => wizardGoStep(wizardState.step - 1);
-
 const wizardRestart = () => {
-  wizardState.words = [];
-  wizardState.step = 0;
+  wizardState.words = Array.from({ length: wizardState.length }, () => '');
   wizardStatusClear();
   wizardRender();
 };
@@ -146,11 +192,20 @@ const wizardRestart = () => {
 // as typing the words into the boxes by hand would.
 const wizardLoadSeed = () => {
   const st = wizardState;
-  const words = st.words.slice(0, st.length);
-  if (words.length < st.length || words.some((w) => !w)) {
-    wizardStatusError('Every word slot must be filled before loading.');
+  const words = st.words.slice(0, st.length).map((w) => w || '');
+  const missing = [];
+  words.forEach((w, i) => {
+    if (!w) missing.push(i + 1);
+  });
+  if (missing.length) {
+    wizardStatusError(`Fill every box first - still missing word${missing.length > 1 ? 's' : ''} ${missing.join(', ')}.`);
     return;
   }
+  // Make the visible boxes match exactly what is about to load.
+  words.forEach((w, i) => {
+    const box = document.getElementById(`wizardWordBox-${i + 1}`);
+    if (box && box.value !== w) box.value = w;
+  });
   const boxes = (typeof DOM !== 'undefined' && DOM.mnemonicInputs) || [];
   boxes.forEach((div, i) => {
     const input = div.querySelector('input');
@@ -174,119 +229,39 @@ const wizardLoadSeed = () => {
   wizardStatusOk(`Seed loaded (${st.length} words). The rest of the toolkit is unlocked below.`);
 };
 
-// ---------------------------------------------------------------------
-// The full 2048-word picker (mouse-first word choice)
-// ---------------------------------------------------------------------
-const wizardOpenPicker = () => {
-  const modal = document.getElementById('wizardWordModal');
-  if (modal) modal.classList.remove('hidden');
-  const filter = document.getElementById('wizardWordFilter');
-  if (filter) filter.value = '';
-  wizardRenderPicker();
-  if (filter && filter.focus) filter.focus();
-};
-
-const wizardClosePicker = () => {
-  const modal = document.getElementById('wizardWordModal');
-  if (modal) modal.classList.add('hidden');
-};
-
-const wizardRenderPicker = () => {
-  const list = wizardWords();
-  const filterEl = document.getElementById('wizardWordFilter');
-  const q = filterEl ? String(filterEl.value || '').trim().toLowerCase() : '';
-  const matches = q ? list.filter((w) => w.includes(q)) : list;
-  const countEl = document.getElementById('wizardWordCount');
-  if (countEl) {
-    countEl.textContent = q
-      ? `${matches.length} of ${list.length} words contain "${q}" - click one to choose it`
-      : `All ${list.length} words - click one to choose it`;
-  }
-  const grid = document.getElementById('wizardWordGrid');
-  if (grid) {
-    grid.innerHTML = matches
-      .map((w) => `<button type="button" class="wizard-word" onclick="wizardPickFromPicker('${w}')">${w}</button>`)
-      .join('');
-  }
-};
-
-const wizardPickFromPicker = (w) => {
-  if (wizardPickWord(w)) wizardClosePicker();
-};
-
-// ---------------------------------------------------------------------
-// Panel rendering
-// ---------------------------------------------------------------------
-const wizardSuggestRender = () => {
-  const box = document.getElementById('wizardSuggest');
-  const input = document.getElementById('wizardWordInput');
-  if (!box) return;
-  const items = wizardSuggestions(input ? input.value : '');
-  box.innerHTML = items
-    .map((w) => `<button type="button" class="wizard-suggest-item" onclick="wizardPickWord('${w}')">${w}</button>`)
-    .join('');
-};
-
+// The shell: length buttons, the word boxes on top, the verdict and actions,
+// then the filter and the full matrix underneath.
 const wizardRender = () => {
   const el = document.getElementById('seedWizard');
   if (!el) return;
   const st = wizardState;
-
-  if (st.step === 0) {
-    el.innerHTML = `
-      <h3 class="wizard-title">How many words is your seed phrase?</h3>
-      <p class="recover-hint">BIP39 phrases come in standard lengths. Pick the one that matches your seed, then enter the words one at a time.</p>
-      <div class="wizard-length-row">${WIZARD_SIZES.map((n) => `<button type="button" class="btn wizard-length-btn${n === st.length ? ' active' : ''}" onclick="wizardSetLength(${n})">${n} words</button>`).join('')}</div>`;
-    return;
-  }
-
-  const chips = Array.from({ length: st.length }, (_, i) => {
-    const n = i + 1;
-    const done = !!st.words[i];
-    return `<button type="button" class="wizard-chip${n === st.step ? ' current' : ''}${done ? ' done' : ''}" title="${escapeHtml(st.words[i] || `word ${n}`)}" onclick="wizardGoStep(${n})">${done ? '✓' : n}</button>`;
-  }).join('');
-
-  if (st.step > st.length) {
-    const phrase = st.words.slice(0, st.length).join(' ');
-    const complete = st.words.length >= st.length && st.words.slice(0, st.length).every(Boolean);
-    const valid = complete && wizardValidate(phrase);
-    el.innerHTML = `
-      <h3 class="wizard-title">Review your ${st.length} words</h3>
-      <div class="wizard-steps" role="group" aria-label="Progress">${chips}</div>
-      <div class="wizard-review">${st.words.slice(0, st.length).map((w, i) => `<button type="button" class="wizard-review-word" onclick="wizardGoStep(${i + 1})"><span class="wizard-review-n">${i + 1}</span>${escapeHtml(w || '…')}</button>`).join('')}</div>
-      <p class="wizard-checksum ${valid ? 'wizard-ok' : 'wizard-error'}">${valid ? '✓ BIP39 checksum valid' : '✗ BIP39 checksum not valid yet - a word is probably mistyped, in the wrong order, or missing. Click a word to fix it.'}</p>
-      <div class="button-row">
-        <button type="button" class="btn" onclick="wizardBack()">← Back</button>
-        <button type="button" class="btn" onclick="wizardLoadSeed()"><b>LOAD SEED</b></button>
-        <button type="button" class="btn" onclick="wizardRestart()">Start over</button>
-      </div>`;
-    return;
-  }
-
-  const cur = st.words[st.step - 1] || '';
+  st.words = Array.from({ length: st.length }, (_, i) => st.words[i] || '');
+  const inputs = st.words
+    .map((w, i) => {
+      const n = i + 1;
+      return `<div class="wizard-word-slot"><span class="wizard-word-n">${n}</span><input type="text" id="wizardWordBox-${n}" class="wizard-word-box" value="${escapeHtml(w)}" aria-label="Word ${n} of ${st.length}" placeholder="word ${n}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardTypeWord(${i}, this.value)"><button type="button" class="wizard-clear" onclick="wizardClearWord(${i})" title="Clear word ${n}" aria-label="Clear word ${n}">&times;</button></div>`;
+    })
+    .join('');
   el.innerHTML = `
-    <h3 class="wizard-title">Word ${st.step} of ${st.length}</h3>
-    <div class="wizard-steps" role="group" aria-label="Progress">${chips}</div>
-    <div class="wizard-word-entry">
-      <input type="text" id="wizardWordInput" class="wizard-word-input" placeholder="type part of the word" value="${escapeHtml(cur)}" aria-label="Word ${st.step} of ${st.length}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardSuggestRender()" onkeydown="if (event.key === 'Enter') { event.preventDefault(); wizardCommitInput(); }">
-      <div class="wizard-suggest" id="wizardSuggest" role="listbox" aria-label="Word suggestions"></div>
-    </div>
+    <div class="wizard-length-row" role="group" aria-label="Phrase length">${WIZARD_SIZES.map((n) => `<button type="button" class="btn wizard-length-btn${n === st.length ? ' active' : ''}" onclick="wizardSetLength(${n})">${n} words</button>`).join('')}</div>
+    <div class="wizard-inputs">${inputs}</div>
+    <p class="wizard-checksum" id="wizardCheck"></p>
     <div class="button-row">
-      <button type="button" class="btn" onclick="wizardBack()">← Back</button>
-      <button type="button" class="btn" onclick="wizardCommitInput()">Next →</button>
-      <button type="button" class="btn" onclick="wizardOpenPicker()">Browse all 2048 words</button>
+      <button type="button" class="btn" onclick="wizardLoadSeed()"><b>LOAD SEED</b></button>
+      <button type="button" class="btn" onclick="wizardRestart()" title="Clear every word and start over">Reset all</button>
     </div>
-    <p class="recover-hint">Type part of a word and pick from the suggestions, press Enter when one word matches, or click a word in the full list.${cur ? ` Currently: <strong>${escapeHtml(cur)}</strong> - type to replace it.` : ''}</p>`;
-  const input = document.getElementById('wizardWordInput');
-  if (input && input.focus) input.focus();
-  wizardSuggestRender();
+    <div class="wizard-matrix-tools">
+      <input type="search" id="wizardWordFilter" placeholder="Filter 2048 words&hellip;" aria-label="Filter words" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardMatrixRender()">
+      <span class="recover-hint" id="wizardWordCount"></span>
+    </div>
+    <div class="wizard-matrix" id="wizardMatrix" role="group" aria-label="BIP39 English word matrix"></div>
+    <p class="recover-hint">Click any word in the matrix to put it in the next empty box - repeats are fine, the little numbers show which box each pick went to. The boxes accept typing too; use the &times; to clear one box or Reset all to start over.</p>`;
+  wizardCheckRender();
+  wizardMatrixRender();
 };
 
 const initWizard = () => {
   wizardRender();
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') wizardClosePicker();
-  });
 };
 
 window.addEventListener('DOMContentLoaded', initWizard);
