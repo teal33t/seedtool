@@ -362,7 +362,7 @@ gpg --verify signature.txt</code></pre>
       <div class="explainer" data-explainer="seed">
         <span class="explainer__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><path d="M12 22c4-3 7-7 7-12a7 7 0 1 0-14 0c0 5 3 9 7 12z"/><circle cx="12" cy="10" r="2"/></svg></span>
         <div class="explainer__body">
-          <p><strong>Three ways to load a seed:</strong> Pick a tab below. <strong>Generate</strong> makes a fresh random mnemonic, <strong>Enter words</strong> lets you type one you already have, and <strong>From entropy</strong> takes raw entropy from dice, coins or cards. Once a seed is loaded you can add a BIP39 passphrase, and the rest of the toolkit unlocks.</p>
+          <p><strong>Four ways to load a seed:</strong> Pick a tab below. <strong>Generate</strong> makes a fresh random mnemonic, <strong>Enter words</strong> lets you type one you already have, the <strong>Word wizard</strong> walks you through it one word at a time (typed or clicked from the full 2048-word list), and <strong>From entropy</strong> takes raw entropy from dice, coins or cards. Once a seed is loaded you can add a BIP39 passphrase, and the rest of the toolkit unlocks.</p>
           <div class="explainer__learn-row">
             <button type="button" class="explainer__learn" onclick="openInfoModal(event, 'entropy')">Learn more: Entropy</button>
             <button type="button" class="explainer__learn" onclick="openInfoModal(event, 'BIP39')">Learn more: BIP39</button>
@@ -379,6 +379,8 @@ gpg --verify signature.txt</code></pre>
             onclick="tabSelect(event, 'Input_Mnemonic')"><span aria-hidden="true">📥</span> Enter words</button>
           <button type="button" class="tabLinks" title="Make a mnemonic from your own entropy: dice, coins or cards"
             onclick="tabSelect(event, 'Input_Entropy')"><span aria-hidden="true">🎲</span> From entropy</button>
+          <button type="button" class="tabLinks" title="Assemble a mnemonic one word at a time from the 2048-word list"
+            onclick="tabSelect(event, 'Input_Wizard')"><span aria-hidden="true">🧙</span> Word wizard</button>
         </div>
         <div id="Generate_Random" class="tabContent">
           <p style="text-align: left;">
@@ -451,6 +453,24 @@ gpg --verify signature.txt</code></pre>
           </div>
           <p class="recover-hint hidden" id="inputMnemonicScanned" role="status" aria-live="polite"></p>
           <p class="warning hidden" id="inputMnemonicError" role="alert"></p>
+        </div>
+        <div id="Input_Wizard" class="tabContent">
+          <p class="warning">
+            <strong>Warning!</strong> Do not try to make up your own mnemonic, you are not as random as you think! The wizard helps you ENTER an existing seed, word by word.
+          </p>
+          <div id="seedWizard"></div>
+          <p class="warning hidden" id="wizardStatus" role="status" aria-live="polite"></p>
+          <div class="wizard-modal hidden" id="wizardWordModal" onclick="wizardClosePicker()">
+            <div class="wizard-modal-panel" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-label="BIP39 English word list">
+              <div class="wizard-modal-head">
+                <strong>Pick a word</strong>
+                <input type="search" id="wizardWordFilter" placeholder="Filter words&hellip;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardRenderPicker()">
+                <button type="button" class="btn" onclick="wizardClosePicker()">Close</button>
+              </div>
+              <p class="recover-hint" id="wizardWordCount"></p>
+              <div class="wizard-word-grid" id="wizardWordGrid"></div>
+            </div>
+          </div>
         </div>
         <div id="Input_Entropy" class="tabContent">
           <div class="warning">
@@ -3242,6 +3262,7 @@ m/86'/0'/0'/0/0  ← BIP-86 Taproot (bc1p…)</pre>
   <script class="dev-script" src="js/recover.js"></script>
   <script class="dev-script" src="js/keys.js"></script>
   <script class="dev-script" src="js/backup-sheet.js"></script>
+  <script class="dev-script" src="js/wizard.js"></script>
   <script class="dev-script" src="js/shell.js"></script>
 
   <script id="dev-reload">// Dev server only: reload when a file changes or the server restarts.
