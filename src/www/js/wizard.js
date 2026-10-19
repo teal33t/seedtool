@@ -10,11 +10,14 @@
  */
 
 const WIZARD_SIZES = [12, 15, 18, 21, 24];
+// Cell-size steps for the matrix zoom buttons: 1 is the fit-all default.
+const WIZARD_ZOOMS = [0.8, 1, 1.5, 2.2, 3.2];
 
 const wizardState = {
   length: 12,
   words: [],
-  dense: true,
+  zoom: 1,
+  numbers: true,
 };
 
 // The bundled BIP39 English word list - the same source the loader validates
@@ -80,12 +83,40 @@ const wizardSeqLabel = (seqs) => {
   return parts.join(',');
 };
 
-// Fit-all (dense) shows the whole matrix without scrolling; "Bigger words"
-// swaps in larger, easier-to-hit cells at the cost of scrolling.
-const wizardToggleDensity = () => {
-  wizardState.dense = !wizardState.dense;
-  const btn = document.getElementById('wizardDensityBtn');
-  if (btn) btn.textContent = wizardState.dense ? 'Bigger words' : 'Fit all in view';
+// Zoom: - steps smaller than the fit-all default, + steps bigger at the cost
+// of a longer page. The scale lives on the grid as data-zoom; CSS turns it
+// into cell size, so the matrix itself never scrolls internally.
+const wizardZoomApply = () => {
+  const z = WIZARD_ZOOMS[wizardState.zoom];
+  const grid = document.getElementById('wizardMatrix');
+  if (grid && grid.dataset) grid.dataset.zoom = String(z);
+  const label = document.getElementById('wizardZoomLabel');
+  if (label) label.textContent = `×${z}`;
+  const out = document.getElementById('wizardZoomOut');
+  if (out) out.disabled = wizardState.zoom === 0;
+  const inBtn = document.getElementById('wizardZoomIn');
+  if (inBtn) inBtn.disabled = wizardState.zoom === WIZARD_ZOOMS.length - 1;
+};
+
+const wizardZoomIn = () => {
+  if (wizardState.zoom < WIZARD_ZOOMS.length - 1) {
+    wizardState.zoom += 1;
+    wizardZoomApply();
+  }
+};
+
+const wizardZoomOut = () => {
+  if (wizardState.zoom > 0) {
+    wizardState.zoom -= 1;
+    wizardZoomApply();
+  }
+};
+
+// The numbers checkbox: checked shows each word's place in the list
+// (abandon = 1), unchecked shows the words themselves.
+const wizardToggleNumbers = () => {
+  const cb = document.getElementById('wizardNumberMode');
+  wizardState.numbers = !!(cb && cb.checked);
   wizardMatrixRender();
 };
 
@@ -121,29 +152,41 @@ const wizardCheckRender = () => {
 };
 
 // The matrix itself: every word as a clickable cell, narrowed by the filter,
-// each picked cell tinted and carrying its sequence number(s).
+// each picked cell tinted and carrying its sequence number(s). By default the
+// cell body shows the word's place in the list (abandon = 1); the numbers
+// checkbox switches that to the word itself.
 const wizardMatrixRender = () => {
   const grid = document.getElementById('wizardMatrix');
   if (!grid) return;
   const list = wizardWords();
+  const entries = list.map((w, i) => ({ w, place: i + 1 }));
   const filterEl = document.getElementById('wizardWordFilter');
   const q = filterEl ? String(filterEl.value || '').trim().toLowerCase() : '';
-  const matches = q ? list.filter((w) => w.includes(q)) : list;
+  const shown = q ? entries.filter((e) => e.w.includes(q)) : entries;
   const countEl = document.getElementById('wizardWordCount');
   if (countEl) {
     countEl.textContent = q
-      ? `${matches.length} of ${list.length} words contain "${q}" - click one to put it in the next empty box`
+      ? `${shown.length} of ${list.length} words contain "${q}" - click one to put it in the next empty box`
       : `All ${list.length} words - click one to put it in the next empty box`;
   }
+  const hint = document.getElementById('wizardMatrixHint');
+  if (hint) {
+    hint.textContent = wizardState.numbers
+      ? 'Cells show each word\u2019s place in the list (abandon = 1) - uncheck Numbers to see the words. Click a cell to fill the next empty box (repeats are fine - the small badges show where each pick went). Typing works too; \u00d7 clears one box, Reset all starts over.'
+      : 'Click a word to fill the next empty box (repeats are fine - the small badges show where each pick went). Typing works too; \u00d7 clears one box, Reset all starts over.';
+  }
   const used = wizardUsedMap();
-  grid.className = `wizard-matrix${wizardState.dense ? '' : ' comfortable'}`;
-  grid.innerHTML = matches
-    .map((w) => {
+  grid.className = 'wizard-matrix';
+  grid.innerHTML = shown
+    .map(({ w, place }) => {
       const seqs = used.get(w) || [];
       const badge = seqs.length ? `<span class="wiz-cell-n">${wizardSeqLabel(seqs)}</span>` : '';
-      return `<button type="button" class="wiz-cell${seqs.length ? ' used' : ''}" title="${seqs.length ? `picked as word ${seqs.join(', ')}` : w}" onclick="wizardMatrixPick('${w}')"><span class="wiz-cell-w">${w}</span>${badge}</button>`;
+      const body = wizardState.numbers ? String(place) : w;
+      const title = `#${place} ${w}${seqs.length ? ` - picked as word ${seqs.join(', ')}` : ''}`;
+      return `<button type="button" class="wiz-cell${seqs.length ? ' used' : ''}" title="${title}" onclick="wizardMatrixPick('${w}')"><span class="wiz-cell-w">${body}</span>${badge}</button>`;
     })
     .join('');
+  wizardZoomApply();
 };
 
 // Click a cell: the word goes into the first empty box - never overwrites.
@@ -279,10 +322,15 @@ const wizardRender = () => {
     <div class="wizard-matrix-tools">
       <input type="search" id="wizardWordFilter" placeholder="Filter 2048 words&hellip;" aria-label="Filter words" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardMatrixRender()">
       <span class="recover-hint" id="wizardWordCount"></span>
-      <button type="button" class="btn" id="wizardDensityBtn" onclick="wizardToggleDensity()" title="Switch between showing every word at once and bigger cells">${st.dense ? 'Bigger words' : 'Fit all in view'}</button>
+      <span class="wizard-zoom" role="group" aria-label="Matrix zoom">
+        <button type="button" class="btn wizard-zoom-btn" id="wizardZoomOut" onclick="wizardZoomOut()" title="Smaller cells" aria-label="Zoom out">&minus;</button>
+        <span class="wizard-zoom-label" id="wizardZoomLabel">&times;1</span>
+        <button type="button" class="btn wizard-zoom-btn" id="wizardZoomIn" onclick="wizardZoomIn()" title="Bigger cells" aria-label="Zoom in">+</button>
+      </span>
+      <label class="wizard-numbers-label"><input type="checkbox" id="wizardNumberMode" ${st.numbers ? 'checked' : ''} onchange="wizardToggleNumbers()"> Numbers (place in list)</label>
     </div>
     <div class="wizard-matrix" id="wizardMatrix" role="group" aria-label="BIP39 English word matrix"></div>
-    <p class="recover-hint">Click a word to fill the next empty box (repeats are fine - the small numbers show where each pick went). Typing works too; &times; clears one box, Reset all starts over.</p>`;
+    <p class="recover-hint" id="wizardMatrixHint"></p>`;
   wizardCheckRender();
   wizardMatrixRender();
 };
