@@ -4319,7 +4319,7 @@ body.is-private .seed-hero__word-text { visibility: hidden; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(calc(2rem * var(--wiz-scale)), 1fr));
   gap: 1px;
-  width: min(calc(100vw - 24px), 1260px);
+  width: calc(100vw - 24px);
   margin-left: 50%;
   transform: translateX(-50%);
   padding: 4px;

@@ -308,7 +308,7 @@ const wizardRender = () => {
   const inputs = st.words
     .map((w, i) => {
       const n = i + 1;
-      return `<div class="wizard-word-slot"><span class="wizard-word-n">${n}</span><input type="text" id="wizardWordBox-${n}" class="wizard-word-box" value="${escapeHtml(w)}" aria-label="Word ${n} of ${st.length}" placeholder="word ${n}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardTypeWord(${i}, this.value)"><button type="button" class="wizard-clear" onclick="wizardClearWord(${i})" title="Clear word ${n}" aria-label="Clear word ${n}">&times;</button></div>`;
+      return `<div class="wizard-word-slot"><span class="wizard-word-n">${n}</span><input type="text" id="wizardWordBox-${n}" class="wizard-word-box" value="${escapeHtml(w)}" aria-label="Word ${n} of ${st.length}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardTypeWord(${i}, this.value)"><button type="button" class="wizard-clear" onclick="wizardClearWord(${i})" title="Clear word ${n}" aria-label="Clear word ${n}">&times;</button></div>`;
     })
     .join('');
   el.innerHTML = `
