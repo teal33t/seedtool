@@ -4167,6 +4167,239 @@ body.is-private .seed-hero__word-text { visibility: hidden; }
   margin: 4px 0 8px 18px;
   list-style: circle;
 }
+.dormant-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0;
+}
+.dormant-page {
+  padding: 4px 10px;
+  border: 1px solid var(--q-border);
+  border-radius: 6px;
+  background: var(--q-light-grey);
+  color: var(--q-white);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.dormant-page:hover:not(:disabled):not(.active) {
+  border-color: var(--q-accent-lo);
+  color: var(--q-accent-hi);
+}
+.dormant-page.active {
+  border-color: var(--q-accent-hi);
+  background: var(--q-accent-lo);
+}
+.dormant-page:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.dormant-page-gap {
+  padding: 0 2px;
+  color: var(--q-white);
+  opacity: 0.55;
+}
+.dormant-page-info {
+  margin-right: 6px;
+  color: var(--q-white);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.dormant-row {
+  cursor: pointer;
+}
+.dormant-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.dormant-row.open {
+  background: rgba(255, 255, 255, 0.06);
+}
+.dormant-chev {
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.15s ease;
+}
+.dormant-row.open .dormant-chev {
+  transform: rotate(90deg);
+}
+.dormant-acc td {
+  white-space: normal;
+  background: rgba(0, 0, 0, 0.25);
+}
+.dormant-acc-body {
+  margin-top: 0;
+  padding: 12px 16px 16px 34px;
+  max-width: 70rem;
+  line-height: 1.6;
+}
+/* Seed word wizard */
+.wizard-length-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.wizard-length-btn {
+  min-width: 7.5rem;
+  padding: 10px 16px;
+  font-size: 1rem;
+}
+.wizard-length-btn.active {
+  border-color: var(--q-accent-hi);
+  color: var(--q-accent-hi);
+}
+.wizard-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr));
+  gap: 4px;
+  margin: 8px 0 4px;
+}
+.wizard-word-slot {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+  border: 1px solid var(--q-border);
+  border-radius: 6px;
+  background: var(--q-light-grey);
+}
+.wizard-word-n {
+  min-width: 1.4rem;
+  color: var(--q-accent-hi);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.wizard-word-box {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 6px;
+  border: none;
+  background: transparent;
+  color: var(--q-white);
+  font-size: 0.95rem;
+}
+.wizard-clear {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--q-dark);
+  color: var(--q-white);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.wizard-clear:hover {
+  color: var(--q-danger);
+}
+.wizard-checksum {
+  margin: 4px 0 8px;
+  font-weight: 600;
+}
+.wizard-ok {
+  color: var(--q-success);
+}
+.wizard-error {
+  color: var(--q-danger);
+}
+.wizard-matrix-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 6px;
+}
+.wizard-matrix-tools input {
+  flex: 1;
+  min-width: 14rem;
+  padding: 7px 10px;
+  border: 1px solid var(--q-border);
+  border-radius: 6px;
+  background: var(--q-light-grey);
+  color: var(--q-white);
+}
+.wizard-matrix {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2rem, 1fr));
+  gap: 1px;
+  width: min(calc(100vw - 24px), 1260px);
+  margin-left: 50%;
+  transform: translateX(-50%);
+  padding: 4px;
+  border: 1px solid var(--q-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.wiz-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0.5px 1px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: var(--q-light-grey);
+  color: var(--q-white);
+  font-size: 0.42rem;
+  line-height: 1;
+  letter-spacing: -0.3px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.wiz-cell-w {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wiz-cell:hover {
+  border-color: var(--q-accent-hi);
+  color: var(--q-accent-hi);
+}
+.wiz-cell.used {
+  border-color: var(--q-success);
+  background: var(--q-accent-lo);
+}
+/* Sequence badge sits under the word; only picked cells are 2 lines so unpicked rows stay one line */
+.wiz-cell-n {
+  max-width: 100%;
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--q-accent-hi);
+  color: var(--q-dark);
+  font-size: 0.32rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  white-space: nowrap;
+}
+/* Bigger words: larger cells, scrollable matrix */
+.wizard-matrix.comfortable {
+  grid-template-columns: repeat(auto-fill, minmax(7.2rem, 1fr));
+  gap: 3px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.wizard-matrix.comfortable .wiz-cell {
+  flex-direction: row;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  letter-spacing: normal;
+}
+.wizard-matrix.comfortable .wiz-cell-n {
+  padding: 0 4px;
+  font-size: 0.7rem;
+  line-height: 1.3;
+}
 
 </style>
   <meta property="og:title" content="Bitcoin Seed Tool">
@@ -4526,7 +4759,7 @@ gpg --verify signature.txt</code></pre>
       <div class="explainer" data-explainer="seed">
         <span class="explainer__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><path d="M12 22c4-3 7-7 7-12a7 7 0 1 0-14 0c0 5 3 9 7 12z"/><circle cx="12" cy="10" r="2"/></svg></span>
         <div class="explainer__body">
-          <p><strong>Three ways to load a seed:</strong> Pick a tab below. <strong>Generate</strong> makes a fresh random mnemonic, <strong>Enter words</strong> lets you type one you already have, and <strong>From entropy</strong> takes raw entropy from dice, coins or cards. Once a seed is loaded you can add a BIP39 passphrase, and the rest of the toolkit unlocks.</p>
+          <p><strong>Four ways to load a seed:</strong> Pick a tab below. <strong>Generate</strong> makes a fresh random mnemonic, <strong>Enter words</strong> lets you type one you already have, the <strong>Word wizard</strong> puts your word boxes on top of the full 2048-word matrix so you can click the words in, and <strong>From entropy</strong> takes raw entropy from dice, coins or cards. Once a seed is loaded you can add a BIP39 passphrase, and the rest of the toolkit unlocks.</p>
           <div class="explainer__learn-row">
             <button type="button" class="explainer__learn" onclick="openInfoModal(event, 'entropy')">Learn more: Entropy</button>
             <button type="button" class="explainer__learn" onclick="openInfoModal(event, 'BIP39')">Learn more: BIP39</button>
@@ -4543,6 +4776,8 @@ gpg --verify signature.txt</code></pre>
             onclick="tabSelect(event, 'Input_Mnemonic')"><span aria-hidden="true">📥</span> Enter words</button>
           <button type="button" class="tabLinks" title="Make a mnemonic from your own entropy: dice, coins or cards"
             onclick="tabSelect(event, 'Input_Entropy')"><span aria-hidden="true">🎲</span> From entropy</button>
+          <button type="button" class="tabLinks" title="Assemble a mnemonic one word at a time from the 2048-word list"
+            onclick="tabSelect(event, 'Input_Wizard')"><span aria-hidden="true">🧙</span> Word wizard</button>
         </div>
         <div id="Generate_Random" class="tabContent">
           <p style="text-align: left;">
@@ -4615,6 +4850,13 @@ gpg --verify signature.txt</code></pre>
           </div>
           <p class="recover-hint hidden" id="inputMnemonicScanned" role="status" aria-live="polite"></p>
           <p class="warning hidden" id="inputMnemonicError" role="alert"></p>
+        </div>
+        <div id="Input_Wizard" class="tabContent">
+          <p class="warning">
+            <strong>Warning!</strong> Do not try to make up your own mnemonic, you are not as random as you think! The wizard helps you ENTER an existing seed - click the words in from the matrix below, or type them.
+          </p>
+          <div id="seedWizard"></div>
+          <p class="warning hidden" id="wizardStatus" role="status" aria-live="polite"></p>
         </div>
         <div id="Input_Entropy" class="tabContent">
           <div class="warning">
@@ -6836,16 +7078,18 @@ gpg --verify signature.txt</code></pre>
           <input type="search" id="dormantQuery" placeholder="1Feex… or mtgox" autocomplete="off" spellcheck="false" oninput="dormantApply()">
           <label for="dormantSort">Sort by</label>
           <select id="dormantSort" onchange="dormantApply()">
-            <option value="balance">Balance (biggest first)</option>
-            <option value="years">Dormant years (longest first)</option>
-            <option value="last">Last active (oldest first)</option>
-            <option value="first">First seen (oldest first)</option>
+            <option value="balance">Balance (BTC)</option>
+            <option value="years">Dormant years</option>
+            <option value="last">Last active</option>
+            <option value="first">First seen</option>
           </select>
+          <button type="button" class="btn" id="dormantDirBtn" onclick="dormantToggleDir()" title="Flip sort order">↓ biggest first</button>
           <button type="button" class="btn" id="dormantResetBtn" onclick="dormantReset()">Reset filters</button>
         </div>
         <div class="dormant-cats" id="dormantCats" role="group" aria-label="Filter by tag category"></div>
         <p class="recover-hint" id="dormantSummary" aria-live="polite"></p>
         <div class="dormant-rate" id="dormantRateNote" hidden></div>
+        <div class="dormant-pager" id="dormantPagerTop" aria-label="Wallet list pages"></div>
 
         <div class="dormant-table-wrap">
           <table class="dormant-table" id="dormantTable">
@@ -6855,14 +7099,11 @@ gpg --verify signature.txt</code></pre>
             <tbody id="dormantRows"></tbody>
           </table>
         </div>
+        <div class="dormant-pager" id="dormantPagerBottom" aria-label="Wallet list pages"></div>
         <div class="ms-actions">
-          <button type="button" class="btn" id="dormantPrevBtn" onclick="dormantPage(-1)">← Previous</button>
-          <span id="dormantPageLabel" class="recover-hint"></span>
-          <button type="button" class="btn" id="dormantNextBtn" onclick="dormantPage(1)">Next →</button>
           <button type="button" class="btn" id="dormantExportCsvBtn" onclick="dormantDownload('dormant-wallets.csv', dormantExportCsv(), 'text/csv')">Export CSV</button>
           <button type="button" class="btn" id="dormantExportJsonBtn" onclick="dormantDownload('dormant-wallets.json', dormantExportJson(), 'application/json')">Export JSON</button>
         </div>
-        <div id="dormantDetail" class="dormant-detail" hidden></div>
       </div>
     </section>
 
@@ -202247,6 +202488,8 @@ const dormantState = {
   filtered: [],
   page: 0,
   category: 'all',
+  openAddr: null,
+  dir: null,
 };
 
 // Years since the coins last moved: only spends reset the clock, receiving
@@ -202283,6 +202526,18 @@ const dormantCategories = (wallets) => {
   return ordered;
 };
 
+// Sort direction defaults per key: balance and years read best-first, the date
+// keys read chronologically. A missing/unknown dir falls back to these.
+const dormantDefaultDir = (sort) => (sort === 'last' || sort === 'first' ? 'asc' : 'desc');
+
+// The direction button always names the real order, whatever the key.
+const dormantDirLabel = (sort, dir) => {
+  const desc = dir !== 'asc';
+  if (sort === 'years') return desc ? '↓ longest first' : '↑ shortest first';
+  if (sort === 'last' || sort === 'first') return desc ? '↓ newest first' : '↑ oldest first';
+  return desc ? '↓ biggest first' : '↑ smallest first';
+};
+
 // Pure filter + sort over the pool; the UI's thresholds are inputs here.
 // Blank/omitted thresholds mean "no floor" - everything in the pool shows.
 const dormantFilterSort = (wallets, opts) => {
@@ -202302,12 +202557,15 @@ const dormantFilterSort = (wallets, opts) => {
     return true;
   });
   const sort = opts.sort || 'balance';
-  out.sort((a, b) => {
-    if (sort === 'years') return dormantYears(b) - dormantYears(a);
-    if (sort === 'last') return Date.parse(a.lastActive || 0) - Date.parse(b.lastActive || 0);
-    if (sort === 'first') return Date.parse(a.firstSeen || 0) - Date.parse(b.firstSeen || 0);
-    return (b.balanceBtc || 0) - (a.balanceBtc || 0);
-  });
+  const dir = opts.dir === 'asc' || opts.dir === 'desc' ? opts.dir : dormantDefaultDir(sort);
+  const sign = dir === 'asc' ? 1 : -1;
+  const val = (w) => {
+    if (sort === 'years') return dormantYears(w);
+    if (sort === 'last') return Date.parse(w.lastActive || 0);
+    if (sort === 'first') return Date.parse(w.firstSeen || 0);
+    return (w.balanceBtc || 0);
+  };
+  out.sort((a, b) => sign * (val(a) - val(b)));
   return out;
 };
 
@@ -202319,31 +202577,42 @@ const dormantTagChip = (t) => {
   return `<span class="dormant-tag" data-category="${escapeHtml(t.category || 'unknown')}" title="${title}">${escapeHtml(short)}</span>`;
 };
 
-const dormantRowHtml = (w, idx) => {
+const dormantRowHtml = (w, idx, open) => {
   const addr = escapeHtml(w.address);
   const years = dormantYears(w).toFixed(1);
   const first = w.firstSeen ? escapeHtml(w.firstSeen.slice(0, 10)) : '?';
   const last = w.lastActive ? escapeHtml(w.lastActive.slice(0, 10)) : '?';
   const tags = (w.tags || []).map(dormantTagChip).join(' ');
-  return `<tr data-idx="${idx}" tabindex="0" onclick="dormantShowDetail(+this.dataset.idx)"><td><code><a href="https://blockstream.info/address/${addr}" target="_blank" rel="noopener noreferrer">${addr}</a></code></td><td>${(w.balanceBtc || 0).toFixed(8)}</td><td>${escapeHtml(dormantFormatUsd(dormantUsd(w)))}</td><td>${years}y</td><td>${first}</td><td>${last}</td><td>${tags}</td></tr>`;
+  return `<tr class="dormant-row${open ? ' open' : ''}" data-idx="${idx}" tabindex="0" aria-expanded="${open ? 'true' : 'false'}" onclick="dormantShowDetail(+this.dataset.idx)"><td><span class="dormant-chev" aria-hidden="true">▸</span><code><a href="https://blockstream.info/address/${addr}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${addr}</a></code></td><td>${(w.balanceBtc || 0).toFixed(8)}</td><td>${escapeHtml(dormantFormatUsd(dormantUsd(w)))}</td><td>${years}y</td><td>${first}</td><td>${last}</td><td>${tags}</td></tr>`;
 };
 
 const dormantRender = () => {
   const st = dormantState;
   const rowsEl = document.getElementById('dormantRows');
   const summaryEl = document.getElementById('dormantSummary');
-  const pageEl = document.getElementById('dormantPageLabel');
   const totalPages = Math.max(1, Math.ceil(st.filtered.length / DORMANT_PAGE_SIZE));
   if (st.page >= totalPages) st.page = totalPages - 1;
   if (st.page < 0) st.page = 0;
   const start = st.page * DORMANT_PAGE_SIZE;
   const pageRows = st.filtered.slice(start, start + DORMANT_PAGE_SIZE);
-  rowsEl.innerHTML = pageRows.map((w) => dormantRowHtml(w, st.filtered.indexOf(w))).join('');
+  rowsEl.innerHTML = pageRows.map((w) => {
+    const open = st.openAddr === w.address;
+    return dormantRowHtml(w, st.filtered.indexOf(w), open) + (open ? dormantAccordionHtml(w) : '');
+  }).join('');
   const totalBtc = st.filtered.reduce((sum, w) => sum + (w.balanceBtc || 0), 0);
   const price = st.snapshot ? st.snapshot.priceUsd : null;
   const usdPart = Number.isFinite(price) && price > 0 ? ` (≈ ${dormantFormatUsd(totalBtc * price)})` : '';
   summaryEl.textContent = `${st.filtered.length} wallet${st.filtered.length === 1 ? '' : 's'} match - ${totalBtc.toFixed(2)} BTC${usdPart} on this page's selection (page ${st.page + 1} of ${totalPages})`;
-  pageEl.textContent = `${st.filtered.length} matches`;
+  const sortKey = document.getElementById('dormantSort').value;
+  const dirBtn = document.getElementById('dormantDirBtn');
+  if (dirBtn) dirBtn.textContent = dormantDirLabel(sortKey, st.dir || dormantDefaultDir(sortKey));
+  // The same pager renders above and below the table: 50-row pages mean one
+  // of them is always off-screen.
+  const pagerHtml = dormantPagerHtml(st.page, totalPages);
+  for (const id of ['dormantPagerTop', 'dormantPagerBottom']) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = pagerHtml;
+  }
 };
 
 const dormantApply = () => {
@@ -202355,11 +202624,21 @@ const dormantApply = () => {
     query: document.getElementById('dormantQuery').value,
     category: st.category,
     sort: document.getElementById('dormantSort').value,
+    dir: st.dir,
   };
   st.filtered = dormantFilterSort(st.snapshot.wallets, opts);
   st.page = 0;
-  document.getElementById('dormantDetail').hidden = true;
+  // openAddr survives re-filtering: it is keyed by address, so the same wallet
+  // stays expanded wherever it lands (or silently collapses if filtered out).
   dormantRender();
+};
+
+// Flip the current sort's direction; the button label names the real order.
+const dormantToggleDir = () => {
+  const st = dormantState;
+  const sortKey = document.getElementById('dormantSort').value;
+  st.dir = (st.dir || dormantDefaultDir(sortKey)) === 'asc' ? 'desc' : 'asc';
+  dormantApply();
 };
 
 const dormantSetCategory = (category) => {
@@ -202400,13 +202679,10 @@ const dormantMinedHtml = (w) => {
     + `<p class="recover-hint">This address is a pay-to-pubkey label for a mining output; some explorers show the coins under the transaction, not the address.</p>`;
 };
 
-const dormantShowDetail = (idx) => {
-  const w = dormantState.filtered[idx];
-  const el = document.getElementById('dormantDetail');
-  if (!w) {
-    el.hidden = true;
-    return;
-  }
+// Wallet detail for the row accordion: provenance first - which sources assert
+// each tag and when they were retrieved - plus the honesty markers for
+// walk-bounded dates. Pure builder shared by the accordion row and the tests.
+const dormantDetailHtml = (w) => {
   const tags = (w.tags || []).map((t) => {
     const sources = (t.sources || []).map((s) => {
       const retrieved = s.retrievedAt ? ` - retrieved ${escapeHtml(String(s.retrievedAt).slice(0, 10))}` : '';
@@ -202414,7 +202690,7 @@ const dormantShowDetail = (idx) => {
     }).join('');
     return `<li><strong>${escapeHtml(t.label)}</strong> - ${escapeHtml(t.category || 'unknown')} - <em>${escapeHtml(t.confidence || 'unverified')}</em><ul>${sources}</ul></li>`;
   }).join('');
-  el.innerHTML = `
+  return `
     <h3>${escapeHtml(w.address)}</h3>
     <p>${(w.balanceBtc || 0).toFixed(8)} BTC${dormantUsd(w) == null ? '' : ` (≈ ${escapeHtml(dormantFormatUsd(dormantUsd(w)))} at snapshot price)`} - dormant ${dormantYears(w).toFixed(1)} years (coins last moved ${escapeHtml((w.lastActive || 'unknown').slice(0, 10))}) - ${w.txCount || 0} tx${w.txCount === 1 ? '' : 's'}${w.blockHeight != null ? ` - first seen in block ${w.blockHeight}` : ''}</p>
     <p><a href="https://blockstream.info/address/${escapeHtml(w.address)}" target="_blank" rel="noopener noreferrer">Open on block explorer</a></p>
@@ -202423,14 +202699,57 @@ const dormantShowDetail = (idx) => {
     ${w.spendUndated ? '<p class="recover-hint">Last-moved date is an upper bound - this wallet has spends our history walk could not date, so the real last move is older (it has been dormant at least this long).</p>' : ''}
     <p class="recover-hint">Tags are third-party claims with their sources listed - check the citation before treating any label as fact.</p>
     <ul class="dormant-sources">${tags || '<li>no tags</li>'}</ul>`;
-  el.hidden = false;
+};
+
+// The open row's detail, emitted as a full-width row directly beneath it.
+const dormantAccordionHtml = (w) =>
+  `<tr class="dormant-acc"><td colspan="7"><div class="dormant-detail dormant-acc-body">${dormantDetailHtml(w)}</div></td></tr>`;
+
+// One row open at a time; clicking the open row closes it. Keyed by address,
+// not row index, so re-sorting cannot put the wrong wallet under an open row.
+const dormantShowDetail = (idx) => {
+  const w = dormantState.filtered[idx];
+  if (!w) return;
+  dormantState.openAddr = dormantState.openAddr === w.address ? null : w.address;
+  dormantRender();
+};
+
+// Windowed page-number list: first and last always, the current page with its
+// neighbors, and '…' where numbers are skipped. The window widens near the
+// start (and symmetrically at the end) so early pages never collapse to "1 …".
+const dormantPageNumbers = (page, total) => {
+  const want = new Set([0, total - 1, page - 1, page, page + 1]);
+  if (page <= 2) [1, 2, 3].forEach((n) => want.add(n));
+  if (page >= total - 3) [total - 2, total - 3, total - 4].forEach((n) => want.add(n));
+  const out = [];
+  let prev = null;
+  for (const n of [...want].filter((x) => x >= 0 && x < total).sort((a, b) => a - b)) {
+    if (prev != null && n - prev > 1) out.push('…');
+    out.push(n);
+    prev = n;
+  }
+  return out;
+};
+
+const dormantPagerHtml = (page, totalPages) => {
+  const nums = dormantPageNumbers(page, totalPages).map((n) => (n === '…'
+    ? '<span class="dormant-page-gap">…</span>'
+    : `<button type="button" class="dormant-page${n === page ? ' active' : ''}" onclick="dormantGoPage(${n})"${n === page ? ' aria-current="page"' : ''}>${n + 1}</button>`)).join('');
+  return `<span class="dormant-page-info">Page ${page + 1} of ${totalPages}</span>`
+    + `<button type="button" class="dormant-page" onclick="dormantPage(-1)"${page === 0 ? ' disabled' : ''}>← Prev</button>`
+    + nums
+    + `<button type="button" class="dormant-page" onclick="dormantPage(1)"${page >= totalPages - 1 ? ' disabled' : ''}>Next →</button>`;
+};
+
+const dormantGoPage = (n) => {
+  const st = dormantState;
+  const totalPages = Math.max(1, Math.ceil(st.filtered.length / DORMANT_PAGE_SIZE));
+  st.page = Math.min(totalPages - 1, Math.max(0, n));
+  dormantRender();
 };
 
 const dormantPage = (delta) => {
-  const st = dormantState;
-  const totalPages = Math.max(1, Math.ceil(st.filtered.length / DORMANT_PAGE_SIZE));
-  st.page = Math.min(totalPages - 1, Math.max(0, st.page + delta));
-  dormantRender();
+  dormantGoPage(dormantState.page + delta);
 };
 
 // Export content builders (pure): the click handlers wrap these in a download.
@@ -202468,6 +202787,7 @@ const dormantDownload = (filename, text, type) => {
 const dormantReset = () => {
   // Empty thresholds = no floor: the whole pool shows until the user fills
   // the boxes in himself.
+  dormantState.dir = null;
   document.getElementById('dormantYearsInput').value = '';
   document.getElementById('dormantMinBtcInput').value = '';
   document.getElementById('dormantQuery').value = '';
@@ -203525,6 +203845,303 @@ window.addEventListener('DOMContentLoaded', dormantEnsureInit);
 
   window.backupSheet = { SIZES, fixedModules, build, print, remove };
 })();
+
+</script>
+  <script>
+/*
+ * Word wizard - a whole-phrase way to assemble a BIP39 seed. The word boxes
+ * sit on top of the full 2048-word matrix, which is visible by default:
+ * clicking any cell fills the first empty box (repeats are fine - each picked
+ * cell shows the sequence numbers it filled), and every box also accepts
+ * typing. The finished phrase is handed to the canonical Enter-words loader
+ * (mnemonicInputSeedLoad) so word checks, the checksum gate and the
+ * downstream load all run through exactly one code path. Nothing here goes
+ * online: the word list ships with the page.
+ */
+
+const WIZARD_SIZES = [12, 15, 18, 21, 24];
+
+const wizardState = {
+  length: 12,
+  words: [],
+  dense: true,
+};
+
+// The bundled BIP39 English word list - the same source the loader validates
+// against, so the wizard can never offer a word the loader would refuse.
+const wizardWords = () => {
+  const lists = (typeof window !== 'undefined' && window.bip39 && window.bip39.wordlists) || {};
+  return lists.english || Object.values(lists)[0] || [];
+};
+
+const wizardValidate = (phrase) => {
+  try {
+    return !!(typeof bip39 !== 'undefined' && bip39.validateMnemonic && bip39.validateMnemonic(phrase));
+  } catch (err) {
+    return false;
+  }
+};
+
+const wizardStatusError = (msg) => {
+  const el = document.getElementById('wizardStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+};
+
+const wizardStatusOk = (msg) => {
+  const el = document.getElementById('wizardStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+};
+
+const wizardStatusClear = () => {
+  const el = document.getElementById('wizardStatus');
+  if (!el) return;
+  el.textContent = '';
+  el.classList.add('hidden');
+};
+
+// Which sequence numbers each word currently holds - a word can repeat, so a
+// cell may carry more than one number.
+const wizardUsedMap = () => {
+  const used = new Map();
+  wizardState.words.slice(0, wizardState.length).forEach((w, i) => {
+    if (!w) return;
+    if (!used.has(w)) used.set(w, []);
+    used.get(w).push(i + 1);
+  });
+  return used;
+};
+
+// Compact badge text for a cell: runs of three or more collapse to a range
+// ("1-11"), anything shorter is listed ("1,3").
+const wizardSeqLabel = (seqs) => {
+  const parts = [];
+  let i = 0;
+  while (i < seqs.length) {
+    let j = i;
+    while (j + 1 < seqs.length && seqs[j + 1] === seqs[j] + 1) j += 1;
+    if (j - i + 1 >= 3) parts.push(`${seqs[i]}-${seqs[j]}`);
+    else for (let k = i; k <= j; k += 1) parts.push(String(seqs[k]));
+    i = j + 1;
+  }
+  return parts.join(',');
+};
+
+// Fit-all (dense) shows the whole matrix without scrolling; "Bigger words"
+// swaps in larger, easier-to-hit cells at the cost of scrolling.
+const wizardToggleDensity = () => {
+  wizardState.dense = !wizardState.dense;
+  const btn = document.getElementById('wizardDensityBtn');
+  if (btn) btn.textContent = wizardState.dense ? 'Bigger words' : 'Fit all in view';
+  wizardMatrixRender();
+};
+
+const wizardFilled = () => wizardState.words.slice(0, wizardState.length).filter(Boolean).length;
+
+// The live verdict under the boxes: progress, unknown words, then the honest
+// checksum answer once every box holds a real word.
+const wizardCheckRender = () => {
+  const el = document.getElementById('wizardCheck');
+  if (!el) return;
+  const st = wizardState;
+  const words = st.words.slice(0, st.length).map((w) => w || '');
+  const unknown = [];
+  words.forEach((w, i) => {
+    if (w && !wizardWords().includes(w)) unknown.push(`word ${i + 1} ("${w}")`);
+  });
+  if (unknown.length) {
+    el.className = 'wizard-checksum wizard-error';
+    el.textContent = `✗ Not in the BIP39 word list: ${unknown.join(', ')} - click the right cell or fix the box.`;
+    return;
+  }
+  const filled = words.filter(Boolean).length;
+  if (filled < st.length) {
+    el.className = 'wizard-checksum';
+    el.textContent = `${filled} of ${st.length} words filled`;
+    return;
+  }
+  const ok = wizardValidate(words.join(' '));
+  el.className = `wizard-checksum ${ok ? 'wizard-ok' : 'wizard-error'}`;
+  el.textContent = ok
+    ? '✓ BIP39 checksum valid'
+    : '✗ BIP39 checksum not valid yet - a word is probably mistyped or out of order. Click a box, then the right cell.';
+};
+
+// The matrix itself: every word as a clickable cell, narrowed by the filter,
+// each picked cell tinted and carrying its sequence number(s).
+const wizardMatrixRender = () => {
+  const grid = document.getElementById('wizardMatrix');
+  if (!grid) return;
+  const list = wizardWords();
+  const filterEl = document.getElementById('wizardWordFilter');
+  const q = filterEl ? String(filterEl.value || '').trim().toLowerCase() : '';
+  const matches = q ? list.filter((w) => w.includes(q)) : list;
+  const countEl = document.getElementById('wizardWordCount');
+  if (countEl) {
+    countEl.textContent = q
+      ? `${matches.length} of ${list.length} words contain "${q}" - click one to put it in the next empty box`
+      : `All ${list.length} words - click one to put it in the next empty box`;
+  }
+  const used = wizardUsedMap();
+  grid.className = `wizard-matrix${wizardState.dense ? '' : ' comfortable'}`;
+  grid.innerHTML = matches
+    .map((w) => {
+      const seqs = used.get(w) || [];
+      const badge = seqs.length ? `<span class="wiz-cell-n">${wizardSeqLabel(seqs)}</span>` : '';
+      return `<button type="button" class="wiz-cell${seqs.length ? ' used' : ''}" title="${seqs.length ? `picked as word ${seqs.join(', ')}` : w}" onclick="wizardMatrixPick('${w}')"><span class="wiz-cell-w">${w}</span>${badge}</button>`;
+    })
+    .join('');
+};
+
+// Click a cell: the word goes into the first empty box - never overwrites.
+const wizardMatrixPick = (word) => {
+  const st = wizardState;
+  const w = String(word || '').trim().toLowerCase();
+  if (!wizardWords().includes(w)) return false;
+  const words = st.words.slice(0, st.length).map((x) => x || '');
+  const i = words.findIndex((x) => !x);
+  if (i === -1) {
+    wizardStatusError(`All ${st.length} boxes are filled - clear one with its × (or use Reset all) before changing the phrase.`);
+    return false;
+  }
+  st.words[i] = w;
+  const input = document.getElementById(`wizardWordBox-${i + 1}`);
+  if (input) input.value = w;
+  wizardStatusClear();
+  wizardMatrixRender();
+  wizardCheckRender();
+  wizardFocusEmpty();
+  return true;
+};
+
+// Typing in a box keeps the matrix badges and the verdict in step.
+const wizardTypeWord = (i, value) => {
+  const st = wizardState;
+  const idx = parseInt(i, 10);
+  if (!(idx >= 0 && idx < st.length)) return;
+  st.words[idx] = String(value || '').trim().toLowerCase();
+  wizardStatusClear();
+  wizardMatrixRender();
+  wizardCheckRender();
+};
+
+// The small x by a box: forget just that word, keep the rest.
+const wizardClearWord = (i) => {
+  const st = wizardState;
+  const idx = parseInt(i, 10);
+  if (!(idx >= 0 && idx < st.length)) return;
+  st.words[idx] = '';
+  const input = document.getElementById(`wizardWordBox-${idx + 1}`);
+  if (input) input.value = '';
+  wizardStatusClear();
+  wizardMatrixRender();
+  wizardCheckRender();
+};
+
+const wizardFocusEmpty = () => {
+  const st = wizardState;
+  const words = st.words.slice(0, st.length).map((x) => x || '');
+  const i = words.findIndex((x) => !x);
+  const input = i === -1 ? null : document.getElementById(`wizardWordBox-${i + 1}`);
+  if (input && input.focus) input.focus();
+};
+
+const wizardSetLength = (n) => {
+  const st = wizardState;
+  st.length = Math.max(1, parseInt(n, 10) || 12);
+  st.words = Array.from({ length: st.length }, (_, i) => st.words[i] || '');
+  wizardStatusClear();
+  wizardRender();
+};
+
+const wizardRestart = () => {
+  wizardState.words = Array.from({ length: wizardState.length }, () => '');
+  wizardStatusClear();
+  wizardRender();
+};
+
+// Hand the assembled words to the canonical Enter-words loader: it re-checks
+// every word, gates on the BIP39 checksum and runs the same downstream load
+// as typing the words into the boxes by hand would.
+const wizardLoadSeed = () => {
+  const st = wizardState;
+  const words = st.words.slice(0, st.length).map((w) => w || '');
+  const missing = [];
+  words.forEach((w, i) => {
+    if (!w) missing.push(i + 1);
+  });
+  if (missing.length) {
+    wizardStatusError(`Fill every box first - still missing word${missing.length > 1 ? 's' : ''} ${missing.join(', ')}.`);
+    return;
+  }
+  // Make the visible boxes match exactly what is about to load.
+  words.forEach((w, i) => {
+    const box = document.getElementById(`wizardWordBox-${i + 1}`);
+    if (box && box.value !== w) box.value = w;
+  });
+  const boxes = (typeof DOM !== 'undefined' && DOM.mnemonicInputs) || [];
+  boxes.forEach((div, i) => {
+    const input = div.querySelector('input');
+    if (input) input.value = i < words.length ? words[i] : '';
+  });
+  const lenSel = document.getElementById('mnemonicLengthSelect');
+  if (lenSel) lenSel.value = String(st.length);
+  const idMode = document.getElementById('inputMnemonicIdMode');
+  if (idMode && idMode.checked) {
+    idMode.checked = false;
+    if (typeof applyMnemonicIdMode === 'function') applyMnemonicIdMode();
+  }
+  const err = document.getElementById('inputMnemonicError');
+  if (err) err.textContent = '';
+  if (typeof mnemonicInputSeedLoad === 'function') mnemonicInputSeedLoad();
+  const failed = err ? String(err.textContent || '') : '';
+  if (failed) {
+    wizardStatusError(failed);
+    return;
+  }
+  wizardStatusOk(`Seed loaded (${st.length} words). The rest of the toolkit is unlocked below.`);
+};
+
+// The shell: length buttons, the word boxes on top, the verdict and actions,
+// then the filter and the full matrix underneath.
+const wizardRender = () => {
+  const el = document.getElementById('seedWizard');
+  if (!el) return;
+  const st = wizardState;
+  st.words = Array.from({ length: st.length }, (_, i) => st.words[i] || '');
+  const inputs = st.words
+    .map((w, i) => {
+      const n = i + 1;
+      return `<div class="wizard-word-slot"><span class="wizard-word-n">${n}</span><input type="text" id="wizardWordBox-${n}" class="wizard-word-box" value="${escapeHtml(w)}" aria-label="Word ${n} of ${st.length}" placeholder="word ${n}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardTypeWord(${i}, this.value)"><button type="button" class="wizard-clear" onclick="wizardClearWord(${i})" title="Clear word ${n}" aria-label="Clear word ${n}">&times;</button></div>`;
+    })
+    .join('');
+  el.innerHTML = `
+    <div class="wizard-length-row" role="group" aria-label="Phrase length">${WIZARD_SIZES.map((n) => `<button type="button" class="btn wizard-length-btn${n === st.length ? ' active' : ''}" onclick="wizardSetLength(${n})">${n} words</button>`).join('')}</div>
+    <div class="wizard-inputs">${inputs}</div>
+    <p class="wizard-checksum" id="wizardCheck"></p>
+    <div class="button-row">
+      <button type="button" class="btn" onclick="wizardLoadSeed()"><b>LOAD SEED</b></button>
+      <button type="button" class="btn" onclick="wizardRestart()" title="Clear every word and start over">Reset all</button>
+    </div>
+    <div class="wizard-matrix-tools">
+      <input type="search" id="wizardWordFilter" placeholder="Filter 2048 words&hellip;" aria-label="Filter words" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardMatrixRender()">
+      <span class="recover-hint" id="wizardWordCount"></span>
+      <button type="button" class="btn" id="wizardDensityBtn" onclick="wizardToggleDensity()" title="Switch between showing every word at once and bigger cells">${st.dense ? 'Bigger words' : 'Fit all in view'}</button>
+    </div>
+    <div class="wizard-matrix" id="wizardMatrix" role="group" aria-label="BIP39 English word matrix"></div>
+    <p class="recover-hint">Click a word to fill the next empty box (repeats are fine - the small numbers show where each pick went). Typing works too; &times; clears one box, Reset all starts over.</p>`;
+  wizardCheckRender();
+  wizardMatrixRender();
+};
+
+const initWizard = () => {
+  wizardRender();
+};
+
+window.addEventListener('DOMContentLoaded', initWizard);
 
 </script>
   <script>

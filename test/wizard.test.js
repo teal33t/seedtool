@@ -52,17 +52,41 @@ const test = (name, fn) => tests.push([name, fn]);
 test('matrix: every word is offered and picked cells carry their sequence numbers', async () => {
   const tool = await openTool();
   const grid = () => tool.document.getElementById('wizardMatrix');
-  assert.strictEqual((grid().innerHTML.match(/class="wiz-cell/g) || []).length, 2048, 'the full list is visible by default');
-  assert.ok(grid().innerHTML.includes(`wizardMatrixPick('zebra')">zebra</button>`), 'unused cells show no badge');
+  assert.strictEqual((grid().innerHTML.match(/class="wiz-cell[ "]/g) || []).length, 2048, 'the full list is visible by default');
+  assert.ok(grid().innerHTML.includes(`wizardMatrixPick('zebra')"><span class="wiz-cell-w">zebra</span></button>`), 'unused cells show no badge');
 
   const pick = tool.run('wizardMatrixPick');
   assert.strictEqual(pick('abandon'), true);
   assert.strictEqual(pick('zoo'), true);
   assert.strictEqual(pick('abandon'), true, 'repeats are fine');
   const html = grid().innerHTML;
-  assert.ok(html.includes(`wizardMatrixPick('abandon')">abandon<span class="wiz-cell-n">1</span><span class="wiz-cell-n">3</span></button>`), 'a repeated cell shows every sequence number');
-  assert.ok(html.includes(`wizardMatrixPick('zoo')">zoo<span class="wiz-cell-n">2</span></button>`));
+  assert.ok(html.includes(`wizardMatrixPick('abandon')"><span class="wiz-cell-w">abandon</span><span class="wiz-cell-n">1,3</span></button>`), 'a repeated cell shows every sequence number');
+  assert.ok(html.includes(`wizardMatrixPick('zoo')"><span class="wiz-cell-w">zoo</span><span class="wiz-cell-n">2</span></button>`));
   assert.ok(html.includes('class="wiz-cell used"'), 'picked cells are highlighted');
+});
+
+test('sequence badges collapse long runs into ranges', async () => {
+  const tool = await openTool();
+  const label = tool.run('wizardSeqLabel');
+  assert.strictEqual(label([2]), '2');
+  assert.strictEqual(label([1, 2]), '1,2');
+  assert.strictEqual(label([1, 3]), '1,3');
+  assert.strictEqual(label([1, 2, 3]), '1-3');
+  assert.strictEqual(label([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]), '1-11');
+  assert.strictEqual(label([1, 2, 4, 5, 6, 9]), '1,2,4-6,9');
+});
+
+test('the density toggle swaps fit-all for bigger cells and back', async () => {
+  const tool = await openTool();
+  const grid = tool.document.getElementById('wizardMatrix');
+  assert.ok(!grid.className.includes('comfortable'), 'fit-all is the default');
+  assert.match(tool.document.getElementById('seedWizard').innerHTML, />Bigger words</);
+  tool.run('wizardToggleDensity')();
+  assert.match(grid.className, /comfortable/);
+  assert.strictEqual(tool.document.getElementById('wizardDensityBtn').textContent, 'Fit all in view');
+  tool.run('wizardToggleDensity')();
+  assert.ok(!grid.className.includes('comfortable'));
+  assert.strictEqual(tool.document.getElementById('wizardDensityBtn').textContent, 'Bigger words');
 });
 
 test('clicks fill the first empty box in order and never overwrite', async () => {
@@ -92,7 +116,7 @@ test('the x clears one box and reset all clears the phrase', async () => {
   assert.strictEqual(st.words[1], '', 'the second word is forgotten');
   assert.strictEqual(tool.document.getElementById('wizardWordBox-2').value, '', 'its box is emptied');
   assert.strictEqual(st.words[0], 'abandon', 'other words survive');
-  assert.ok(tool.document.getElementById('wizardMatrix').innerHTML.includes(`wizardMatrixPick('zoo')">zoo</button>`), 'the cell badge is gone');
+  assert.ok(tool.document.getElementById('wizardMatrix').innerHTML.includes(`wizardMatrixPick('zoo')"><span class="wiz-cell-w">zoo</span></button>`), 'the cell badge is gone');
 
   tool.run('wizardRestart')();
   assert.ok(Array.from(st.words).every((w) => !w), 'reset all forgets every word');

@@ -14,6 +14,7 @@ const WIZARD_SIZES = [12, 15, 18, 21, 24];
 const wizardState = {
   length: 12,
   words: [],
+  dense: true,
 };
 
 // The bundled BIP39 English word list - the same source the loader validates
@@ -64,6 +65,30 @@ const wizardUsedMap = () => {
   return used;
 };
 
+// Compact badge text for a cell: runs of three or more collapse to a range
+// ("1-11"), anything shorter is listed ("1,3").
+const wizardSeqLabel = (seqs) => {
+  const parts = [];
+  let i = 0;
+  while (i < seqs.length) {
+    let j = i;
+    while (j + 1 < seqs.length && seqs[j + 1] === seqs[j] + 1) j += 1;
+    if (j - i + 1 >= 3) parts.push(`${seqs[i]}-${seqs[j]}`);
+    else for (let k = i; k <= j; k += 1) parts.push(String(seqs[k]));
+    i = j + 1;
+  }
+  return parts.join(',');
+};
+
+// Fit-all (dense) shows the whole matrix without scrolling; "Bigger words"
+// swaps in larger, easier-to-hit cells at the cost of scrolling.
+const wizardToggleDensity = () => {
+  wizardState.dense = !wizardState.dense;
+  const btn = document.getElementById('wizardDensityBtn');
+  if (btn) btn.textContent = wizardState.dense ? 'Bigger words' : 'Fit all in view';
+  wizardMatrixRender();
+};
+
 const wizardFilled = () => wizardState.words.slice(0, wizardState.length).filter(Boolean).length;
 
 // The live verdict under the boxes: progress, unknown words, then the honest
@@ -111,11 +136,12 @@ const wizardMatrixRender = () => {
       : `All ${list.length} words - click one to put it in the next empty box`;
   }
   const used = wizardUsedMap();
+  grid.className = `wizard-matrix${wizardState.dense ? '' : ' comfortable'}`;
   grid.innerHTML = matches
     .map((w) => {
       const seqs = used.get(w) || [];
-      const badges = seqs.map((n) => `<span class="wiz-cell-n">${n}</span>`).join('');
-      return `<button type="button" class="wiz-cell${seqs.length ? ' used' : ''}" title="${seqs.length ? `picked as word ${seqs.join(', ')}` : w}" onclick="wizardMatrixPick('${w}')">${w}${badges}</button>`;
+      const badge = seqs.length ? `<span class="wiz-cell-n">${wizardSeqLabel(seqs)}</span>` : '';
+      return `<button type="button" class="wiz-cell${seqs.length ? ' used' : ''}" title="${seqs.length ? `picked as word ${seqs.join(', ')}` : w}" onclick="wizardMatrixPick('${w}')"><span class="wiz-cell-w">${w}</span>${badge}</button>`;
     })
     .join('');
 };
@@ -253,9 +279,10 @@ const wizardRender = () => {
     <div class="wizard-matrix-tools">
       <input type="search" id="wizardWordFilter" placeholder="Filter 2048 words&hellip;" aria-label="Filter words" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="wizardMatrixRender()">
       <span class="recover-hint" id="wizardWordCount"></span>
+      <button type="button" class="btn" id="wizardDensityBtn" onclick="wizardToggleDensity()" title="Switch between showing every word at once and bigger cells">${st.dense ? 'Bigger words' : 'Fit all in view'}</button>
     </div>
     <div class="wizard-matrix" id="wizardMatrix" role="group" aria-label="BIP39 English word matrix"></div>
-    <p class="recover-hint">Click any word in the matrix to put it in the next empty box - repeats are fine, the little numbers show which box each pick went to. The boxes accept typing too; use the &times; to clear one box or Reset all to start over.</p>`;
+    <p class="recover-hint">Click a word to fill the next empty box (repeats are fine - the small numbers show where each pick went). Typing works too; &times; clears one box, Reset all starts over.</p>`;
   wizardCheckRender();
   wizardMatrixRender();
 };
